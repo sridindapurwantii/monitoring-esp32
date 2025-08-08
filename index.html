@@ -95,7 +95,7 @@
                 <div class="settings">
                     <div class="setting-group">
                         <label for="mqttBroker">MQTT Broker:</label>
-                        <input type="text" id="mqttBroker" value="broker.hivemq.com" readonly>
+                        <input type="text" id="mqttBroker" value="broker.emqx.io" readonly>
                     </div>
                     <div class="setting-group">
                         <label for="clientId">Client ID:</label>
@@ -103,7 +103,7 @@
                     </div>
                     <div class="setting-group">
                         <label for="topicPrefix">Topic Prefix:</label>
-                        <input type="text" id="topicPrefix" value="Monitoring-esp32" onchange="updateTopicPrefix()">
+                        <input type="text" id="topicPrefix" value="ESP32-IoT" onchange="updateTopicPrefix()">
                     </div>
                     <div class="setting-actions">
                         <button class="btn btn-primary" onclick="reconnectMQTT()">
