@@ -7,7 +7,7 @@
   - Maintained exact interface and functionality from provided example.
 */
 const MQTT_BROKERS = [
-    { url: "wss://mqtt.hivemq.cloud:8884/mqtt", name: "HiveMQ" }, // Port 443 via proxy
+    { url: "wss://your-cluster.s1.hivemq.cloud:8884/mqtt", name: "HiveMQ" }, // Ganti dengan hostname HiveMQ
     { url: "wss://broker.emqx.io:8084/mqtt", name: "EMQX" },
     { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" }
 ];
@@ -172,9 +172,11 @@ function connectToMQTT() {
 
         client = mqtt.connect(currentBroker.url, {
             clientId: clientId,
+            username: "your_username", // Ganti dengan username HiveMQ
+            password: "your_password", // Ganti dengan password HiveMQ
             clean: true,
             connectTimeout: 4000,
-            reconnectPeriod: 0, // Disable MQTT.js auto-reconnect
+            reconnectPeriod: 0,
             keepalive: 60,
             protocolVersion: 5
         });
@@ -552,4 +554,9 @@ document.addEventListener("visibilitychange", () => {
             reconnectMQTT();
         }
     }
+});
+
+// Cleanup on page close
+window.addEventListener('beforeunload', () => {
+    if (client) client.end();
 });
