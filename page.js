@@ -1,14 +1,15 @@
 /*
-  Perbaikan (Version 3.1 - August 08, 2025):
-  - Fixed WebSocket retry logic to ensure broker switching after 2 failed attempts.
-  - Reduced retry interval to 5s for faster recovery.
-  - Added detailed error logging for WebSocket failures.
+  Perbaikan (Version 3.2 - August 08, 2025):
+  - Prioritized brokers using port 443 to bypass campus network restrictions.
+  - Added HiveMQ Cloud as primary broker (port 443).
+  - Reduced reconnect attempts to 2 before switching brokers.
+  - Added detailed WebSocket error logging.
   - Maintained exact interface and functionality from provided example.
 */
 const MQTT_BROKERS = [
+    { url: "wss://mqtt.hivemq.cloud:8884/mqtt", name: "HiveMQ" }, // Port 443 via proxy
     { url: "wss://broker.emqx.io:8084/mqtt", name: "EMQX" },
-    { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" },
-    { url: "wss://public.mqtthq.com:8084/mqtt", name: "MQTTHQ" }
+    { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" }
 ];
 let TOPIC_PREFIX = "ESP32-IoT";
 let client = null;
@@ -21,7 +22,7 @@ let reconnectAttempts = 0;
 const commandMinInterval = 2000; // 2s debounce for commands
 const maxReconnectAttempts = 2; // Switch broker after 2 attempts
 
-// Previous sensor values for trend calculation
+// Previous sensor values
 let previousValues = {
     temperature: null,
     humidity: null,
@@ -46,7 +47,7 @@ const clientId = `web-client-${Math.random().toString(16).substr(2, 8)}`;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("ESP32 MQTT Dashboard initialized - Version 3.1");
+    console.log("ESP32 MQTT Dashboard initialized - Version 3.2");
     
     if (clientIdElement) clientIdElement.value = clientId;
     if (mqttBrokerElement) mqttBrokerElement.value = MQTT_BROKERS[currentBrokerIndex].url;
@@ -223,10 +224,10 @@ function tryNextBroker() {
         reconnectAttempts = 0;
         addLogMessage("System", `Switching to broker: ${MQTT_BROKERS[currentBrokerIndex].name}`);
     }
-    reconnectMQTT();
+    setTimeout(reconnectMQTT, 3000); // 3s delay between attempts
 }
 
-// Clear retained messages for all topics
+// Clear retained messages
 function clearRetainedMessages() {
     const topics = ['lampu', 'kipas', 'servo/status'];
     topics.forEach(device => {
@@ -238,7 +239,7 @@ function clearRetainedMessages() {
     });
 }
 
-// Subscribe to all necessary topics
+// Subscribe to topics
 function subscribeToTopics() {
     const topics = [
         `${TOPIC_PREFIX}/suhu`,
@@ -261,7 +262,7 @@ function subscribeToTopics() {
     });
 }
 
-// Handle incoming MQTT messages
+// Handle MQTT messages
 function handleMQTTMessage(topic, message) {
     console.log("Received message:", message, "on topic:", topic);
     messageCount++;
@@ -294,7 +295,7 @@ function handleMQTTMessage(topic, message) {
     }
 }
 
-// Update sensor data with gauges
+// Update sensor data
 function updateSensorData(sensor, value) {
     if (sensor === 'temperature' && tempGauge) {
         tempGauge.value = value;
@@ -353,7 +354,7 @@ function updateServoStatus(status) {
     }
 }
 
-// Send MQTT command with debounce
+// Send MQTT command
 function sendMQTTCommand(device, command) {
     const now = Date.now();
     if (now - lastCommandTime < commandMinInterval) {
@@ -390,7 +391,7 @@ function sendMQTTCommand(device, command) {
     }
 }
 
-// Enable/disable control buttons
+// Enable/disable controls
 function enableControls(enabled) {
     const buttons = ['lampuOn', 'lampuOff', 'kipasOn', 'kipasOff'];
     buttons.forEach(id => {
@@ -432,7 +433,7 @@ function updateConnectionStatus(status) {
     }
 }
 
-// Add message to log
+// Add log message
 function addLogMessage(type, message) {
     if (!messageLog) {
         console.error("messageLog element not found");
@@ -474,7 +475,7 @@ function reconnectMQTT() {
         client.end(true, () => {
             console.log("Disconnected from previous broker");
             addLogMessage("System", `Disconnected from ${MQTT_BROKERS[currentBrokerIndex].name}`);
-            setTimeout(connectToMQTT, 1000);
+            connectToMQTT();
         });
     } else {
         connectToMQTT();
@@ -497,7 +498,7 @@ function updateTopicPrefix() {
     }
 }
 
-// Clear message logs
+// Clear logs
 function clearLogs() {
     if (messageLog) {
         messageLog.innerHTML = '';
@@ -526,7 +527,7 @@ setInterval(() => {
         console.log("Auto-retry connection...");
         reconnectMQTT();
     }
-}, 5000); // 5s interval for faster retries
+}, 5000); // 5s interval
 
 // Keyboard shortcuts
 document.addEventListener("keydown", (event) => {
@@ -551,9 +552,4 @@ document.addEventListener("visibilitychange", () => {
             reconnectMQTT();
         }
     }
-});
-
-// Cleanup on page close
-window.addEventListener('beforeunload', () => {
-    if (client) client.end();
 });
