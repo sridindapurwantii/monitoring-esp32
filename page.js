@@ -1,4 +1,3 @@
-
 /*
   Perbaikan:
   - Dalam fungsi 'updateServoStatus', mengubah cara ikon pintu diperbarui.
@@ -6,7 +5,7 @@
     bukan seluruh innerHTML, untuk menghindari teks ganda.
 */
 const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
-let TOPIC_PREFIX = "ESP32-IoT";
+let TOPIC_PREFIX = "coba"; // Changed from ESP32-IoT to coba
 let client = null;
 let messageCount = 0;
 let connectionStartTime = null;
@@ -169,8 +168,8 @@ function connectToMQTT() {
         client = mqtt.connect(MQTT_BROKER, {
             clientId: clientId,
             clean: true,
-            connectTimeout: 4000,
-            reconnectPeriod: 2000, // Increased for stability
+            connectTimeout: 10000, // Increased to 10 seconds for stability
+            reconnectPeriod: 2000,
             keepalive: 60,
         });
 
@@ -190,7 +189,7 @@ function connectToMQTT() {
         client.on("error", (err) => {
             console.error("Connection error:", err);
             updateConnectionStatus("error");
-            addLogMessage("Error", `Connection failed: ${err.message}`);
+            addLogMessage("Error", `Connection failed: ${err.message} (Stack: ${err.stack})`);
         });
 
         client.on("reconnect", () => {
@@ -460,143 +459,4 @@ function addLogMessage(type, message) {
     const logItem = document.createElement("div");
     logItem.className = `log-item ${type.toLowerCase()}`;
     logItem.innerHTML = `
-        <span class="timestamp">${timestamp}</span>
-        <span class="message">[${type}] ${message}</span>
-    `;
-        
-    messageLog.appendChild(logItem);
-        
-    while (messageLog.children.length > 100) {
-        messageLog.removeChild(messageLog.firstChild);
-    }
-        
-    if (autoScroll) {
-        messageLog.scrollTop = messageLog.scrollHeight;
-    }
-}
-
-// Update message count
-function updateMessageCount() {
-    if (messageCountElement) {
-        messageCountElement.textContent = messageCount;
-    }
-}
-
-// Update connection time
-function updateConnectionTime() {
-    if (connectionTimeElement && connectionStartTime) {
-        const now = new Date();
-        const diff = Math.floor((now - connectionStartTime) / 1000);
-        const minutes = Math.floor(diff / 60);
-        const seconds = diff % 60;
-        connectionTimeElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-}
-
-// Reconnect MQTT
-function reconnectMQTT() {
-    if (client) {
-        client.end();
-    }
-    setTimeout(() => {
-        connectToMQTT();
-    }, 1000);
-    addLogMessage("System", "Manual reconnection initiated");
-}
-
-// Update topic prefix
-function updateTopicPrefix() {
-    const topicPrefixElement = document.getElementById('topicPrefix');
-    if (topicPrefixElement) {
-        const newPrefix = topicPrefixElement.value.trim();
-        if (newPrefix && newPrefix !== TOPIC_PREFIX) {
-            TOPIC_PREFIX = newPrefix;
-            addLogMessage("System", `Topic prefix updated to: ${TOPIC_PREFIX}`);
-            if (client && client.connected) {
-                reconnectMQTT();
-            }
-        }
-    }
-}
-
-// Clear message logs
-function clearLogs() {
-    if (messageLog) {
-        messageLog.innerHTML = '';
-        messageCount = 0;
-        updateMessageCount();
-        addLogMessage("System", "Message log cleared");
-    }
-}
-
-// Toggle auto scroll
-function toggleAutoScroll() {
-    autoScroll = !autoScroll;
-    const button = document.getElementById('autoScrollBtn');
-    if (button) {
-        button.innerHTML = autoScroll ? 
-            '<i class="fas fa-arrow-down"></i> Auto Scroll' : 
-            '<i class="fas fa-pause"></i> Manual Scroll';
-        button.className = autoScroll ? 'btn btn-small' : 'btn btn-small btn-secondary';
-    }
-    addLogMessage("System", `Auto scroll ${autoScroll ? 'enabled' : 'disabled'}`);
-}
-
-// Auto-retry connection with backoff
-let reconnectAttempts = 0;
-setInterval(() => {
-    if (!client || !client.connected) {
-        console.log("Auto-retry connection...");
-        reconnectMQTT();
-        reconnectAttempts++;
-        setTimeout(() => {
-            reconnectMQTT();
-        }, Math.min(60000, 2000 * Math.pow(2, reconnectAttempts)));
-    } else {
-        reconnectAttempts = 0;
-    }
-}, 15000);
-
-// Keyboard shortcuts
-document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-            case "1":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "ON");
-                break;
-            case "2":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "OFF");
-                break;
-            case "3":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "ON");
-                break;
-            case "4":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "OFF");
-                break;
-        }
-    }
-});
-
-// Page visibility handling
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-        console.log("Page hidden - maintaining connection");
-    } else {
-        console.log("Page visible - checking connection");
-        if (!client || !client.connected) {
-            addLogMessage("System", "Page resumed - reconnecting...");
-            reconnectMQTT();
-        }
-    }
-});
-
-// Cleanup on page close
-window.addEventListener('beforeunload', function() {
-    if (client) {
-        client.end();
-    }
-});
+        <span class="timestamp">${timestamp
