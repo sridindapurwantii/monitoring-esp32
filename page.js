@@ -4,6 +4,7 @@
     Sekarang hanya mengubah kelas ikon (fas fa-door-open/closed)
     bukan seluruh innerHTML, untuk menghindari teks ganda.
 */
+
 const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
 let TOPIC_PREFIX = "Monitoring-esp32";
 let client = null;
