@@ -1,7 +1,8 @@
+WebSocket handling
 const MQTT_BROKERS = [
-    { url: "wss://broker.emqx.io:8084/mqtt", name: "EMQX" },
-    { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" },
-    { url: "wss://public.mqtthq.com:8084/mqtt", name: "MQTTHQ" } // Additional fallback broker
+    { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" }, // Prioritized
+    { url: "wss://public.mqtthq.com:8084/mqtt", name: "MQTTHQ" },
+    { url: "wss://broker.emqx.io:8084/mqtt", name: "EMQX" } // Moved to last
 ];
 const DEVICE_PREFIX = "ESP32-IoT";
 const LAMPU_TOPIC = `${DEVICE_PREFIX}/lampu`;
@@ -21,9 +22,9 @@ let lastServoCommandTime = 0;
 let currentBrokerIndex = 0;
 let reconnectAttempts = 0;
 const commandMinInterval = 2000; // 2s debounce for commands
-const maxReconnectAttempts = 2; // Reduced further for faster broker switching
+const maxReconnectAttempts = 2; // Fast broker switching
 
-// Previous sensor values for trend calculation
+// Previous sensor values
 let previousValues = {
     temperature: null,
     humidity: null,
@@ -48,23 +49,15 @@ const clientId = `webClient-${Math.random().toString(16).substr(2, 8)}`;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("ESP32 MQTT Dashboard initialized");
+    console.log("ESP32 MQTT Dashboard initialized - Version 2.0");
     
-    if (clientIdElement) {
-        clientIdElement.value = clientId;
-    }
-    
-    if (mqttBrokerElement) {
-        mqttBrokerElement.value = MQTT_BROKERS[currentBrokerIndex].url;
-    }
+    if (clientIdElement) clientIdElement.value = clientId;
+    if (mqttBrokerElement) mqttBrokerElement.value = MQTT_BROKERS[currentBrokerIndex].url;
     
     connectToMQTT();
     addLogMessage("System", `Initializing MQTT connection to ${MQTT_BROKERS[currentBrokerIndex].name}...`);
     
-    // Update connection time every second
     setInterval(updateConnectionTime, 1000);
-    
-    // Add tooltips to buttons
     addButtonTooltips();
 
     // Initialize gauges
@@ -166,11 +159,8 @@ function addButtonTooltips() {
     
     buttons.forEach(btn => {
         const element = document.getElementById(btn.id);
-        if (element) {
-            element.title = btn.tooltip;
-        } else {
-            console.warn(`Button ${btn.id} not found in DOM`);
-        }
+        if (element) element.title = btn.tooltip;
+        else console.warn(`Button ${btn.id} not found in DOM`);
     });
 }
 
@@ -180,16 +170,15 @@ function connectToMQTT() {
         updateConnectionStatus("connecting");
         const currentBroker = MQTT_BROKERS[currentBrokerIndex];
         addLogMessage("System", `Connecting to ${currentBroker.name} at ${currentBroker.url}...`);
-        if (mqttBrokerElement) {
-            mqttBrokerElement.value = currentBroker.url;
-        }
+        if (mqttBrokerElement) mqttBrokerElement.value = currentBroker.url;
         
         client = mqtt.connect(currentBroker.url, {
             clientId: clientId,
             clean: true,
-            connectTimeout: 10000, // 10s timeout
+            connectTimeout: 8000, // 8s timeout for faster failure detection
             reconnectPeriod: 0, // Disable MQTT.js auto-reconnect
             keepalive: 60,
+            protocolVersion: 5 // Explicitly set MQTT v5 for compatibility
         });
 
         client.on("connect", () => {
@@ -199,17 +188,14 @@ function connectToMQTT() {
             updateConnectionStatus("connected");
             addLogMessage("MQTT", `Connected successfully to ${currentBroker.name}!`);
             
-            // Subscribe to all sensor topics
             subscribeToTopics();
-            
-            // Clear retained messages
             clearRetainedMessages();
         });
 
         client.on("error", (err) => {
             console.error("Connection error:", err);
             updateConnectionStatus("error");
-            addLogMessage("Error", `Connection failed to ${currentBroker.name}: ${err.message}`);
+            addLogMessage("Error", `Connection failed to ${currentBroker.name} (${currentBroker.url}): ${err.message || err}`);
             tryNextBroker();
         });
 
@@ -237,7 +223,7 @@ function connectToMQTT() {
     }
 }
 
-// Try next broker in the list
+// Try next broker
 function tryNextBroker() {
     reconnectAttempts++;
     if (reconnectAttempts >= maxReconnectAttempts) {
@@ -248,21 +234,18 @@ function tryNextBroker() {
     reconnectMQTT();
 }
 
-// Clear retained messages for all topics
+// Clear retained messages
 function clearRetainedMessages() {
     const topics = [LAMPU_TOPIC, KIPAS_TOPIC, SERVO_TOPIC];
     topics.forEach(topic => {
         client.publish(topic, '', { qos: 1, retain: true }, (err) => {
-            if (!err) {
-                addLogMessage("System", `Cleared retained message for ${topic}`);
-            } else {
-                addLogMessage("Error", `Failed to clear retained message for ${topic}: ${err.message}`);
-            }
+            if (!err) addLogMessage("System", `Cleared retained message for ${topic}`);
+            else addLogMessage("Error", `Failed to clear retained message for ${topic}: ${err.message}`);
         });
     });
 }
 
-// Subscribe to all necessary topics
+// Subscribe to topics
 function subscribeToTopics() {
     const topics = [SUHU_TOPIC, KELEMBAPAN_TOPIC, JARAK_TOPIC, KIPAS_TOPIC, LAMPU_TOPIC, SERVO_TOPIC];
     topics.forEach(topic => {
@@ -278,7 +261,7 @@ function subscribeToTopics() {
     });
 }
 
-// Handle incoming MQTT messages
+// Handle MQTT messages
 function handleMQTTMessage(topic, message) {
     console.log("Received message:", message, "on topic:", topic);
     messageCount++;
@@ -288,25 +271,16 @@ function handleMQTTMessage(topic, message) {
     
     if (topic === SUHU_TOPIC) {
         const value = parseFloat(message);
-        if (!isNaN(value) && value > 0) {
-            updateSensorData('temperature', value);
-        } else {
-            addLogMessage("Warning", `Invalid temperature value: ${message}`);
-        }
+        if (!isNaN(value) && value > 0) updateSensorData('temperature', value);
+        else addLogMessage("Warning", `Invalid temperature value: ${message}`);
     } else if (topic === KELEMBAPAN_TOPIC) {
         const value = parseFloat(message);
-        if (!isNaN(value) && value > 0) {
-            updateSensorData('humidity', value);
-        } else {
-            addLogMessage("Warning", `Invalid humidity value: ${message}`);
-        }
+        if (!isNaN(value) && value > 0) updateSensorData('humidity', value);
+        else addLogMessage("Warning", `Invalid humidity value: ${message}`);
     } else if (topic === JARAK_TOPIC) {
         const value = parseFloat(message);
-        if (!isNaN(value) && value >= 0) {
-            updateSensorData('distance', value);
-        } else {
-            addLogMessage("Warning", `Invalid distance value: ${message}`);
-        }
+        if (!isNaN(value) && value >= 0) updateSensorData('distance', value);
+        else addLogMessage("Warning", `Invalid distance value: ${message}`);
     } else if (topic === KIPAS_TOPIC) {
         updateRelayStatus('kipas', message);
     } else if (topic === LAMPU_TOPIC) {
@@ -320,7 +294,7 @@ function handleMQTTMessage(topic, message) {
     }
 }
 
-// Update sensor data with gauges
+// Update sensor data
 function updateSensorData(sensor, value) {
     if (sensor === 'temperature' && tempGauge) {
         tempGauge.value = value;
@@ -370,20 +344,14 @@ function updateServoStatus(status) {
     if (servoElement) {
         servoElement.textContent = status;
         servoElement.className = `servo-value ${status === 'TERBUKA' ? 'open' : 'closed'}`;
-        
-        if (servoVisual) {
-            servoVisual.className = `servo-visual ${status === 'TERBUKA' ? 'open' : ''}`;
-        }
-        
-        if (servoIcon) {
-            servoIcon.className = status === 'TERBUKA' ? 'fas fa-door-open' : 'fas fa-door-closed';
-        }
+        if (servoVisual) servoVisual.className = `servo-visual ${status === 'TERBUKA' ? 'open' : ''}`;
+        if (servoIcon) servoIcon.className = status === 'TERBUKA' ? 'fas fa-door-open' : 'fas fa-door-closed';
     } else {
         console.warn("Servo status element not found");
     }
 }
 
-// Send MQTT command with debounce
+// Send MQTT command
 function sendMQTTCommand(device, command) {
     const now = Date.now();
     let lastCommandTime;
@@ -398,7 +366,7 @@ function sendMQTTCommand(device, command) {
         return;
     }
     
-    if (client && client.connected) { // Use boolean property
+    if (client && client.connected) { // Boolean property
         const topic = device === 'lampu' ? LAMPU_TOPIC : device === 'kipas' ? KIPAS_TOPIC : SERVO_TOPIC;
         try {
             client.publish(topic, command, { qos: 1, retain: false }, (err) => {
@@ -414,13 +382,10 @@ function sendMQTTCommand(device, command) {
                 }
             });
             
-            // Visual feedback
             const button = document.getElementById(`${device === 'servo/status' ? 'servo' : device}${command === 'ON' || command === 'TERBUKA' ? 'On' : 'Off'}`);
             if (button) {
                 button.style.transform = "scale(0.95)";
-                setTimeout(() => {
-                    button.style.transform = "";
-                }, 150);
+                setTimeout(() => button.style.transform = "", 150);
             }
         } catch (error) {
             console.error("Failed to send command:", error);
@@ -432,7 +397,7 @@ function sendMQTTCommand(device, command) {
     }
 }
 
-// Enable/disable control buttons
+// Enable/disable controls
 function enableControls(enabled) {
     const buttons = ['lampuOn', 'lampuOff', 'kipasOn', 'kipasOff'];
     buttons.forEach(id => {
@@ -449,7 +414,6 @@ function updateConnectionStatus(status) {
     }
     
     statusElement.className = `connection-status ${status}`;
-    
     const qualityElement = document.getElementById('connectionQuality');
     
     switch (status) {
@@ -491,21 +455,13 @@ function addLogMessage(type, message) {
     `;
     
     messageLog.appendChild(logItem);
-    
-    while (messageLog.children.length > 100) {
-        messageLog.removeChild(messageLog.firstChild);
-    }
-    
-    if (autoScroll) {
-        messageLog.scrollTop = messageLog.scrollHeight;
-    }
+    while (messageLog.children.length > 100) messageLog.removeChild(messageLog.firstChild);
+    if (autoScroll) messageLog.scrollTop = messageLog.scrollHeight;
 }
 
 // Update message count
 function updateMessageCount() {
-    if (messageCountElement) {
-        messageCountElement.textContent = messageCount;
-    }
+    if (messageCountElement) messageCountElement.textContent = messageCount;
 }
 
 // Update connection time
@@ -533,10 +489,10 @@ function reconnectMQTT() {
     addLogMessage("System", `Reconnection attempt ${reconnectAttempts + 1} to ${MQTT_BROKERS[currentBrokerIndex].name}`);
 }
 
-// Update topic prefix (disabled for consistency)
+// Update topic prefix (disabled)
 function updateTopicPrefix() {
-    console.warn("Topic prefix change not supported in this version");
-    addLogMessage("Warning", "Topic prefix change not supported in this version");
+    console.warn("Topic prefix change not supported");
+    addLogMessage("Warning", "Topic prefix change not supported");
 }
 
 // Clear message logs
@@ -562,42 +518,24 @@ function toggleAutoScroll() {
     addLogMessage("System", `Auto scroll ${autoScroll ? 'enabled' : 'disabled'}`);
 }
 
-// Auto-retry connection with backoff
+// Auto-retry connection
 setInterval(() => {
-    if (!client || !client.connected) { // Fixed: Use boolean property
+    if (!client || !client.connected) { // Boolean property
         console.log("Auto-retry connection...");
         reconnectMQTT();
     }
-}, 10000); // Reduced to 10s for faster retries
+}, 5000); // 5s interval
 
 // Keyboard shortcuts
 document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey) {
         switch (event.key) {
-            case "1":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "ON");
-                break;
-            case "2":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "OFF");
-                break;
-            case "3":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "ON");
-                break;
-            case "4":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "OFF");
-                break;
-            case "5":
-                event.preventDefault();
-                sendMQTTCommand("servo/status", "TERBUKA");
-                break;
-            case "6":
-                event.preventDefault();
-                sendMQTTCommand("servo/status", "TIDAK TERBUKA");
-                break;
+            case "1": event.preventDefault(); sendMQTTCommand("lampu", "ON"); break;
+            case "2": event.preventDefault(); sendMQTTCommand("lampu", "OFF"); break;
+            case "3": event.preventDefault(); sendMQTTCommand("kipas", "ON"); break;
+            case "4": event.preventDefault(); sendMQTTCommand("kipas", "OFF"); break;
+            case "5": event.preventDefault(); sendMQTTCommand("servo/status", "TERBUKA"); break;
+            case "6": event.preventDefault(); sendMQTTCommand("servo/status", "TIDAK TERBUKA"); break;
         }
     }
 });
@@ -608,7 +546,7 @@ document.addEventListener("visibilitychange", () => {
         console.log("Page hidden - maintaining connection");
     } else {
         console.log("Page visible - checking connection");
-        if (!client || !client.connected) { // Fixed: Use boolean property
+        if (!client || !client.connected) { // Boolean property
             addLogMessage("System", "Page resumed - reconnecting...");
             reconnectMQTT();
         }
@@ -616,8 +554,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Cleanup on page close
-window.addEventListener('beforeunload', function() {
-    if (client) {
-        client.end();
-    }
+window.addEventListener('beforeunload', () => {
+    if (client) client.end();
 });
