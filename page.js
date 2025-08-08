@@ -1,4 +1,3 @@
-WebSocket handling
 const MQTT_BROKERS = [
     { url: "wss://test.mosquitto.org:8081/mqtt", name: "Mosquitto" }, // Prioritized
     { url: "wss://public.mqtthq.com:8084/mqtt", name: "MQTTHQ" },
