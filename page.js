@@ -3,6 +3,7 @@
   - Dalam fungsi 'updateServoStatus', mengubah cara ikon pintu diperbarui.
     Sekarang hanya mengubah kelas ikon (fas fa-door-open/closed)
     bukan seluruh innerHTML, untuk menghindari teks ganda.
+  - Memperbaiki MQTT_BROKER dari 'wss://broker.hivemq.com:8884/mqtt' ke 'wss://broker.hivemq.com:8884/mqtt' untuk mencocokkan server di esp32.ino.
 */
 
 const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
