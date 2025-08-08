@@ -1,16 +1,19 @@
-/*
-  Perbaikan:
-  - Dalam fungsi 'updateServoStatus', mengubah cara ikon pintu diperbarui.
-    Sekarang hanya mengubah kelas ikon (fas fa-door-open/closed)
-    bukan seluruh innerHTML, untuk menghindari teks ganda.
-*/
 const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
-let TOPIC_PREFIX = "ESP32-IoT";
+const DEVICE_PREFIX = "ESP32-IoT";
+const LAMPU_TOPIC = `${DEVICE_PREFIX}/lampu`;
+const KIPAS_TOPIC = `${DEVICE_PREFIX}/kipas`;
+const SERVO_TOPIC = `${DEVICE_PREFIX}/servo/status`;
+const SUHU_TOPIC = `${DEVICE_PREFIX}/suhu`;
+const KELEMBAPAN_TOPIC = `${DEVICE_PREFIX}/kelembapan`;
+const JARAK_TOPIC = `${DEVICE_PREFIX}/jarak`;
+
 let client = null;
 let messageCount = 0;
 let connectionStartTime = null;
 let autoScroll = true;
-let lastCommandTime = 0;
+let lastLampuCommandTime = 0;
+let lastKipasCommandTime = 0;
+let lastServoCommandTime = 0;
 const commandMinInterval = 2000; // 2s debounce for commands
 
 // Previous sensor values for trend calculation
@@ -33,7 +36,7 @@ const clientIdElement = document.getElementById("clientId");
 const lastUpdateElement = document.getElementById('lastUpdate');
 
 // Generate unique client ID
-const clientId = `web-client-${Math.random().toString(16).substr(2, 8)}`;
+const clientId = `webClient-${Math.random().toString(16).substr(2, 8)}`;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -169,7 +172,7 @@ function connectToMQTT() {
             clientId: clientId,
             clean: true,
             connectTimeout: 4000,
-            reconnectPeriod: 2000, // Increased for stability
+            reconnectPeriod: 2000,
             keepalive: 60,
         });
 
@@ -216,9 +219,8 @@ function connectToMQTT() {
 
 // Clear retained messages for all topics
 function clearRetainedMessages() {
-    const topics = ['lampu', 'kipas', 'servo/status'];
-    topics.forEach(device => {
-        const topic = `${TOPIC_PREFIX}/${device}`;
+    const topics = [LAMPU_TOPIC, KIPAS_TOPIC, SERVO_TOPIC];
+    topics.forEach(topic => {
         client.publish(topic, '', { qos: 1, retain: true }, (err) => {
             if (!err) {
                 addLogMessage("System", `Cleared retained message for ${topic}`);
@@ -231,14 +233,7 @@ function clearRetainedMessages() {
 
 // Subscribe to all necessary topics
 function subscribeToTopics() {
-    const topics = [
-        `${TOPIC_PREFIX}/suhu`,
-        `${TOPIC_PREFIX}/kelembapan`,
-        `${TOPIC_PREFIX}/jarak`,
-        `${TOPIC_PREFIX}/kipas`,
-        `${TOPIC_PREFIX}/lampu`,
-        `${TOPIC_PREFIX}/servo/status`
-    ];
+    const topics = [SUHU_TOPIC, KELEMBAPAN_TOPIC, JARAK_TOPIC, KIPAS_TOPIC, LAMPU_TOPIC, SERVO_TOPIC];
     topics.forEach(topic => {
         client.subscribe(topic, { qos: 1 }, (err) => {
             if (!err) {
@@ -261,32 +256,32 @@ function handleMQTTMessage(topic, message) {
     addLogMessage("Received", `${topic}: ${message}`);
         
     // Update UI based on message type
-    if (topic === `${TOPIC_PREFIX}/suhu`) {
+    if (topic === SUHU_TOPIC) {
         const value = parseFloat(message);
         if (!isNaN(value) && value > 0) {
             updateSensorData('temperature', value);
         } else {
             addLogMessage("Warning", `Invalid temperature value: ${message}`);
         }
-    } else if (topic === `${TOPIC_PREFIX}/kelembapan`) {
+    } else if (topic === KELEMBAPAN_TOPIC) {
         const value = parseFloat(message);
         if (!isNaN(value) && value > 0) {
             updateSensorData('humidity', value);
         } else {
             addLogMessage("Warning", `Invalid humidity value: ${message}`);
         }
-    } else if (topic === `${TOPIC_PREFIX}/jarak`) {
+    } else if (topic === JARAK_TOPIC) {
         const value = parseFloat(message);
         if (!isNaN(value) && value >= 0) {
             updateSensorData('distance', value);
         } else {
             addLogMessage("Warning", `Invalid distance value: ${message}`);
         }
-    } else if (topic === `${TOPIC_PREFIX}/kipas`) {
+    } else if (topic === KIPAS_TOPIC) {
         updateRelayStatus('kipas', message);
-    } else if (topic === `${TOPIC_PREFIX}/lampu`) {
+    } else if (topic === LAMPU_TOPIC) {
         updateRelayStatus('lampu', message);
-    } else if (topic === `${TOPIC_PREFIX}/servo/status`) {
+    } else if (topic === SERVO_TOPIC) {
         updateServoStatus(message);
     }
         
@@ -341,10 +336,9 @@ function updateServoStatus(status) {
     const servoElement = document.getElementById('servoStatus');
     const servoVisual = document.getElementById('servoVisual');
     const servoDoor = document.getElementById('servoDoor');
-    const servoIcon = servoDoor ? servoDoor.querySelector('i') : null; // Get the icon element
+    const servoIcon = servoDoor ? servoDoor.querySelector('i') : null;
 
     if (servoElement) {
-        // Update the text status
         servoElement.textContent = status;
         servoElement.className = `servo-value ${status === 'TERBUKA' ? 'open' : 'closed'}`;
                 
@@ -352,12 +346,8 @@ function updateServoStatus(status) {
             servoVisual.className = `servo-visual ${status === 'TERBUKA' ? 'open' : ''}`;
         }
                 
-        if (servoIcon) { // Only update the icon class, not innerHTML
-            if (status === 'TERBUKA') {
-                servoIcon.className = 'fas fa-door-open';
-            } else {
-                servoIcon.className = 'fas fa-door-closed';
-            }
+        if (servoIcon) {
+            servoIcon.className = status === 'TERBUKA' ? 'fas fa-door-open' : 'fas fa-door-closed';
         }
     } else {
         console.warn("Servo status element not found");
@@ -367,13 +357,20 @@ function updateServoStatus(status) {
 // Send MQTT command with debounce
 function sendMQTTCommand(device, command) {
     const now = Date.now();
+    let lastCommandTime;
+    
+    if (device === 'lampu') lastCommandTime = lastLampuCommandTime;
+    else if (device === 'kipas') lastCommandTime = lastKipasCommandTime;
+    else if (device === 'servo/status') lastCommandTime = lastServoCommandTime;
+    else return;
+
     if (now - lastCommandTime < commandMinInterval) {
         addLogMessage("Warning", `Command ignored: Sent too soon for ${device}`);
         return;
     }
         
     if (client && client.connected) {
-        const topic = `${TOPIC_PREFIX}/${device}`;
+        const topic = device === 'lampu' ? LAMPU_TOPIC : device === 'kipas' ? KIPAS_TOPIC : SERVO_TOPIC;
         try {
             client.publish(topic, command, { qos: 1, retain: false }, (err) => {
                 if (err) {
@@ -382,12 +379,14 @@ function sendMQTTCommand(device, command) {
                 } else {
                     console.log("Published:", command, "to", topic);
                     addLogMessage("Sent", `${command} command to ${device}`);
-                    lastCommandTime = now;
+                    if (device === 'lampu') lastLampuCommandTime = now;
+                    else if (device === 'kipas') lastKipasCommandTime = now;
+                    else if (device === 'servo/status') lastServoCommandTime = now;
                 }
             });
                         
             // Visual feedback
-            const button = document.getElementById(`${device}${command === 'ON' ? 'On' : 'Off'}`);
+            const button = document.getElementById(`${device === 'servo/status' ? 'servo' : device}${command === 'ON' || command === 'TERBUKA' ? 'On' : 'Off'}`);
             if (button) {
                 button.style.transform = "scale(0.95)";
                 setTimeout(() => {
@@ -508,12 +507,9 @@ function updateTopicPrefix() {
     const topicPrefixElement = document.getElementById('topicPrefix');
     if (topicPrefixElement) {
         const newPrefix = topicPrefixElement.value.trim();
-        if (newPrefix && newPrefix !== TOPIC_PREFIX) {
-            TOPIC_PREFIX = newPrefix;
-            addLogMessage("System", `Topic prefix updated to: ${TOPIC_PREFIX}`);
-            if (client && client.connected) {
-                reconnectMQTT();
-            }
+        if (newPrefix && newPrefix !== DEVICE_PREFIX) {
+            console.warn("Topic prefix change not supported in this version");
+            addLogMessage("Warning", "Topic prefix change not supported in this version");
         }
     }
 }
