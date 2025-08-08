@@ -1,603 +1,618 @@
 /*
   Perbaikan:
-  - Dalam fungsi 'updateServoStatus', mengubah cara ikon pintu diperbarui.
-    Sekarang hanya mengubah kelas ikon (fas fa-door-open/closed)
-    bukan seluruh innerHTML, untuk menghindari teks ganda.
-  - Memperbaiki MQTT_BROKER dari 'wss://broker.hivemq.com:8884/mqtt' ke 'wss://broker.hivemq.com:8884/mqtt' untuk mencocokkan server di esp32.ino.
+  - Menghapus 'transform: rotate(15deg);' dari .servo-visual.open .servo-door
+    agar ikon pintu tidak miring saat terbuka.
 */
-
-const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
-let TOPIC_PREFIX = "Monitoring-esp32";
-let client = null;
-let messageCount = 0;
-let connectionStartTime = null;
-let autoScroll = true;
-let lastCommandTime = 0;
-const commandMinInterval = 2000; // 2s debounce for commands
-
-// Previous sensor values for trend calculation
-let previousValues = {
-    temperature: null,
-    humidity: null,
-    distance: null
-};
-
-// Gauge objects
-let tempGauge;
-let humGauge;
-
-// DOM Elements
-const statusElement = document.getElementById("connectionStatus");
-const messageLog = document.getElementById("messageLog");
-const messageCountElement = document.getElementById("messageCount");
-const connectionTimeElement = document.getElementById("connectionTime");
-const clientIdElement = document.getElementById("clientId");
-const lastUpdateElement = document.getElementById('lastUpdate');
-
-// Generate unique client ID
-const clientId = `web-client-${Math.random().toString(16).substr(2, 8)}`;
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("ESP32 MQTT Dashboard initialized");
-        
-    if (clientIdElement) {
-        clientIdElement.value = clientId;
-    }
-        
-    connectToMQTT();
-    addLogMessage("System", "Initializing MQTT connection...");
-        
-    // Update connection time every second
-    setInterval(updateConnectionTime, 1000);
-        
-    // Add tooltips to buttons
-    addButtonTooltips();
-
-    // Initialize gauges
-    tempGauge = new RadialGauge({
-        renderTo: 'tempGauge',
-        width: 200,
-        height: 200,
-        units: '°C',
-        minValue: 0,
-        maxValue: 50,
-        majorTicks: ['0', '10', '20', '30', '40', '50'],
-        minorTicks: 2,
-        strokeTicks: true,
-        highlights: [{ from: 30, to: 50, color: 'rgba(200, 50, 50, .75)' }],
-        colorPlate: '#fff',
-        borderShadowWidth: 0,
-        borders: false,
-        needleType: 'arrow',
-        needleWidth: 2,
-        needleCircleSize: 7,
-        needleCircleOuter: true,
-        needleCircleInner: false,
-        animationDuration: 1500,
-        animationRule: 'linear',
-        valueBox: true,
-        valueInt: 1,
-        valueDec: 1,
-        fontValue: 'Arial',
-        fontValueSize: 24,
-        fontValueWeight: 'bold',
-        colorValueBoxBackground: '#eee',
-        colorValueBoxShadow: 'rgba(0, 0, 0, 0.1)',
-        colorValueBoxBorder: '#ccc',
-        colorValueText: '#333',
-        colorNeedle: 'rgba(200, 50, 50, .75)',
-        colorNeedleEnd: 'rgba(200, 50, 50, .75)',
-        colorMajorTicks: '#666',
-        colorMinorTicks: '#999',
-        colorNumbers: '#333',
-        colorTitle: '#333',
-        colorUnits: '#333',
-        colorBarProgress: 'rgba(102, 126, 234, 0.7)',
-        colorBar: 'rgba(200, 200, 200, 0.5)',
-        value: 0
-    }).draw();
-
-    humGauge = new RadialGauge({
-        renderTo: 'humGauge',
-        width: 200,
-        height: 200,
-        units: '%',
-        minValue: 0,
-        maxValue: 100,
-        majorTicks: ['0', '20', '40', '60', '80', '100'],
-        minorTicks: 2,
-        strokeTicks: true,
-        highlights: [{ from: 70, to: 100, color: 'rgba(50, 50, 200, .75)' }],
-        colorPlate: '#fff',
-        borderShadowWidth: 0,
-        borders: false,
-        needleType: 'arrow',
-        needleWidth: 2,
-        needleCircleSize: 7,
-        needleCircleOuter: true,
-        needleCircleInner: false,
-        animationDuration: 1500,
-        animationRule: 'linear',
-        valueBox: true,
-        valueInt: 1,
-        valueDec: 1,
-        fontValue: 'Arial',
-        fontValueSize: 24,
-        fontValueWeight: 'bold',
-        colorValueBoxBackground: '#eee',
-        colorValueBoxShadow: 'rgba(0, 0, 0, 0.1)',
-        colorValueBoxBorder: '#ccc',
-        colorValueText: '#333',
-        colorNeedle: 'rgba(50, 50, 200, .75)',
-        colorNeedleEnd: 'rgba(50, 50, 200, .75)',
-        colorMajorTicks: '#666',
-        colorMinorTicks: '#999',
-        colorNumbers: '#333',
-        colorTitle: '#333',
-        colorUnits: '#333',
-        colorBarProgress: 'rgba(102, 126, 234, 0.7)',
-        colorBar: 'rgba(200, 200, 200, 0.5)',
-        value: 0
-    }).draw();
-});
-
-// Add tooltips to control buttons
-function addButtonTooltips() {
-    const buttons = [
-        { id: "lampuOn", tooltip: "Turn Lampu ON (Ctrl+1)" },
-        { id: "lampuOff", tooltip: "Turn Lampu OFF (Ctrl+2)" },
-        { id: "kipasOn", tooltip: "Turn Kipas ON (Ctrl+3)" },
-        { id: "kipasOff", tooltip: "Turn Kipas OFF (Ctrl+4)" }
-    ];
-        
-    buttons.forEach(btn => {
-        const element = document.getElementById(btn.id);
-        if (element) {
-            element.title = btn.tooltip;
-        } else {
-            console.warn(`Button ${btn.id} not found in DOM`);
-        }
-    });
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
-
-// Connect to MQTT Broker
-function connectToMQTT() {
-    try {
-        updateConnectionStatus("connecting");
-        addLogMessage("System", `Connecting to ${MQTT_BROKER}...`);
-                
-        client = mqtt.connect(MQTT_BROKER, {
-            clientId: clientId,
-            clean: true,
-            connectTimeout: 4000,
-            reconnectPeriod: 2000, // Increased for stability
-            keepalive: 60,
-        });
-
-        client.on("connect", () => {
-            console.log("Connected to MQTT broker at:", new Date().toLocaleTimeString());
-            connectionStartTime = new Date();
-            updateConnectionStatus("connected");
-            addLogMessage("MQTT", "Connected successfully!");
-                        
-            // Subscribe to all sensor topics
-            subscribeToTopics();
-                        
-            // Clear retained messages
-            clearRetainedMessages();
-        });
-
-        client.on("error", (err) => {
-            console.error("Connection error:", err);
-            updateConnectionStatus("error");
-            addLogMessage("Error", `Connection failed: ${err.message}`);
-        });
-
-        client.on("reconnect", () => {
-            console.log("Reconnecting...");
-            updateConnectionStatus("connecting");
-            addLogMessage("MQTT", "Attempting to reconnect...");
-        });
-
-        client.on("offline", () => {
-            console.log("Client offline");
-            updateConnectionStatus("error");
-            addLogMessage("MQTT", "Connection lost - client offline");
-        });
-
-        client.on("message", (topic, message) => {
-            handleMQTTMessage(topic, message.toString());
-        });
-    } catch (error) {
-        console.error("Failed to connect:", error);
-        updateConnectionStatus("error");
-        addLogMessage("Error", `Failed to initialize: ${error.message}`);
-    }
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --success-color: #4CAF50;
+    --danger-color: #f44336;
+    --warning-color: #ff9800;
+    --info-color: #2196F3;
+    --light-color: #f8f9fa;
+    --dark-color: #333;
+    --border-radius: 15px;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
 }
-
-// Clear retained messages for all topics
-function clearRetainedMessages() {
-    const topics = ['lampu', 'kipas', 'servo/status'];
-    topics.forEach(device => {
-        const topic = `${TOPIC_PREFIX}/${device}`;
-        client.publish(topic, '', { qos: 1, retain: true }, (err) => {
-            if (!err) {
-                addLogMessage("System", `Cleared retained message for ${topic}`);
-            } else {
-                addLogMessage("Error", `Failed to clear retained message for ${topic}: ${err.message}`);
-            }
-        });
-    });
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
 }
-
-// Subscribe to all necessary topics
-function subscribeToTopics() {
-    const topics = [
-        `${TOPIC_PREFIX}/suhu`,
-        `${TOPIC_PREFIX}/kelembapan`,
-        `${TOPIC_PREFIX}/jarak`,
-        `${TOPIC_PREFIX}/kipas`,
-        `${TOPIC_PREFIX}/lampu`,
-        `${TOPIC_PREFIX}/servo/status`
-    ];
-    topics.forEach(topic => {
-        client.subscribe(topic, { qos: 1 }, (err) => {
-            if (!err) {
-                console.log(`Subscribed to ${topic}`);
-                addLogMessage("MQTT", `Subscribed to: ${topic}`);
-            } else {
-                console.error(`Subscription error for ${topic}:`, err);
-                addLogMessage("Error", `Subscription failed for ${topic}: ${err.message}`);
-            }
-        });
-    });
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
 }
-
-// Handle incoming MQTT messages
-function handleMQTTMessage(topic, message) {
-    console.log("Received message:", message, "on topic:", topic);
-    messageCount++;
-    updateMessageCount();
-        
-    addLogMessage("Received", `${topic}: ${message}`);
-        
-    // Update UI based on message type
-    if (topic === `${TOPIC_PREFIX}/suhu`) {
-        const value = parseFloat(message);
-        if (!isNaN(value) && value > 0) {
-            updateSensorData('temperature', value);
-        } else {
-            addLogMessage("Warning", `Invalid temperature value: ${message}`);
-        }
-    } else if (topic === `${TOPIC_PREFIX}/kelembapan`) {
-        const value = parseFloat(message);
-        if (!isNaN(value) && value > 0) {
-            updateSensorData('humidity', value);
-        } else {
-            addLogMessage("Warning", `Invalid humidity value: ${message}`);
-        }
-    } else if (topic === `${TOPIC_PREFIX}/jarak`) {
-        const value = parseFloat(message);
-        if (!isNaN(value) && value >= 0) {
-            updateSensorData('distance', value);
-        } else {
-            addLogMessage("Warning", `Invalid distance value: ${message}`);
-        }
-    } else if (topic === `${TOPIC_PREFIX}/kipas`) {
-        updateRelayStatus('kipas', message);
-    } else if (topic === `${TOPIC_PREFIX}/lampu`) {
-        updateRelayStatus('lampu', message);
-    } else if (topic === `${TOPIC_PREFIX}/servo/status`) {
-        updateServoStatus(message);
-    }
-        
-    // Update last update time
-    if (lastUpdateElement) {
-        lastUpdateElement.textContent = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
-    }
+/* Header Styles */
+header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
-
-// Update sensor data with gauges
-function updateSensorData(sensor, value) {
-    if (sensor === 'temperature' && tempGauge) {
-        tempGauge.value = value;
-        console.log(`Updated ${sensor}: ${value.toFixed(1)}°C`);
-        addLogMessage("System", `Updated ${sensor}: ${value.toFixed(1)}°C`);
-        previousValues.temperature = value;
-    } else if (sensor === 'humidity' && humGauge) {
-        humGauge.value = value;
-        console.log(`Updated ${sensor}: ${value.toFixed(1)}%`);
-        addLogMessage("System", `Updated ${sensor}: ${value.toFixed(1)}%`);
-        previousValues.humidity = value;
-    } else if (sensor === 'distance') {
-        const element = document.getElementById('distance');
-        if (!element) {
-            console.error(`DOM element for ${sensor} not found`);
-            addLogMessage("Error", `DOM element for ${sensor} not found`);
-            return;
-        }
-        element.textContent = `${value.toFixed(0)} cm`;
-        console.log(`Updated ${sensor}: ${value.toFixed(0)} cm`);
-        addLogMessage("System", `Updated ${sensor}: ${value.toFixed(0)} cm`);
-        previousValues.distance = value;
-    } else {
-        console.error(`Unknown sensor or gauge not initialized: ${sensor}`);
-        addLogMessage("Error", `Unknown sensor or gauge not initialized: ${sensor}`);
-    }
+header h1 {
+    color: var(--dark-color);
+    font-size: 2.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
-
-// Update relay status
-function updateRelayStatus(relay, status) {
-    const statusElement = document.getElementById(`${relay}Status`);
-    if (statusElement) {
-        statusElement.textContent = status;
-        statusElement.className = `status-badge ${status.toLowerCase()}`;
-    } else {
-        console.warn(`Status element for ${relay} not found`);
-    }
+header h1 i {
+    color: var(--primary-color);
 }
-
-// Update servo status
-function updateServoStatus(status) {
-    const servoElement = document.getElementById('servoStatus');
-    const servoVisual = document.getElementById('servoVisual');
-    const servoDoor = document.getElementById('servoDoor');
-    const servoIcon = servoDoor ? servoDoor.querySelector('i') : null; // Get the icon element
-
-    if (servoElement) {
-        // Update the text status
-        servoElement.textContent = status;
-        servoElement.className = `servo-value ${status === 'TERBUKA' ? 'open' : 'closed'}`;
-                
-        if (servoVisual) {
-            servoVisual.className = `servo-visual ${status === 'TERBUKA' ? 'open' : ''}`;
-        }
-                
-        if (servoIcon) { // Only update the icon class, not innerHTML
-            if (status === 'TERBUKA') {
-                servoIcon.className = 'fas fa-door-open';
-            } else {
-                servoIcon.className = 'fas fa-door-closed';
-            }
-        }
-    } else {
-        console.warn("Servo status element not found");
-    }
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 25px;
+    transition: var(--transition);
 }
-
-// Send MQTT command with debounce
-function sendMQTTCommand(device, command) {
-    const now = Date.now();
-    if (now - lastCommandTime < commandMinInterval) {
-        addLogMessage("Warning", `Command ignored: Sent too soon for ${device}`);
-        return;
-    }
-        
-    if (client && client.connected) {
-        const topic = `${TOPIC_PREFIX}/${device}`;
-        try {
-            client.publish(topic, command, { qos: 1, retain: false }, (err) => {
-                if (err) {
-                    console.error("Publish error:", err);
-                    addLogMessage("Error", `Failed to publish ${command} to ${device}: ${err.message}`);
-                } else {
-                    console.log("Published:", command, "to", topic);
-                    addLogMessage("Sent", `${command} command to ${device}`);
-                    lastCommandTime = now;
-                }
-            });
-                        
-            // Visual feedback
-            const button = document.getElementById(`${device}${command === 'ON' ? 'On' : 'Off'}`);
-            if (button) {
-                button.style.transform = "scale(0.95)";
-                setTimeout(() => {
-                    button.style.transform = "";
-                }, 150);
-            }
-                    
-        } catch (error) {
-            console.error("Failed to send command:", error);
-            addLogMessage("Error", `Failed to send ${command} to ${device}: ${error.message}`);
-        }
-    } else {
-        addLogMessage("Error", "Not connected to MQTT broker");
-        alert("Please wait for connection to be established before sending commands.");
-    }
+.connection-status.connected {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+    border: 2px solid var(--success-color);
 }
-
-// Enable/disable control buttons
-function enableControls(enabled) {
-    const buttons = ['lampuOn', 'lampuOff', 'kipasOn', 'kipasOff'];
-    buttons.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.disabled = !enabled;
-    });
+.connection-status.connecting {
+    background: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+    border: 2px solid var(--warning-color);
 }
-
-// Update connection status
-function updateConnectionStatus(status) {
-    if (!statusElement) {
-        console.error("Cannot update connection status: element missing");
-        return;
-    }
-        
-    statusElement.className = `connection-status ${status}`;
-        
-    const qualityElement = document.getElementById('connectionQuality');
-        
-    switch (status) {
-        case "connected":
-            statusElement.innerHTML = '<i class="fas fa-wifi"></i><span>Connected</span>';
-            if (qualityElement) qualityElement.textContent = "Excellent";
-            enableControls(true);
-            break;
-        case "connecting":
-            statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Connecting...</span>';
-            if (qualityElement) qualityElement.textContent = "Connecting";
-            enableControls(false);
-            break;
-        case "error":
-            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>Error</span>';
-            if (qualityElement) qualityElement.textContent = "Poor";
-            enableControls(false);
-            break;
-        default:
-            statusElement.innerHTML = '<i class="fas fa-wifi-slash"></i><span>Disconnected</span>';
-            if (qualityElement) qualityElement.textContent = "Unknown";
-            enableControls(false);
-    }
+.connection-status.error {
+    background: rgba(244, 67, 54, 0.1);
+    color: var(--danger-color);
+    border: 2px solid var(--danger-color);
 }
-
-// Add message to log
-function addLogMessage(type, message) {
-    if (!messageLog) {
-        console.error("messageLog element not found");
-        return;
-    }
-        
-    const timestamp = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
-    const logItem = document.createElement("div");
-    logItem.className = `log-item ${type.toLowerCase()}`;
-    logItem.innerHTML = `
-        <span class="timestamp">${timestamp}</span>
-        <span class="message">[${type}] ${message}</span>
-    `;
-        
-    messageLog.appendChild(logItem);
-        
-    while (messageLog.children.length > 100) {
-        messageLog.removeChild(messageLog.firstChild);
-    }
-        
-    if (autoScroll) {
-        messageLog.scrollTop = messageLog.scrollHeight;
-    }
+.connection-status i {
+    font-size: 1.2rem;
 }
-
-// Update message count
-function updateMessageCount() {
-    if (messageCountElement) {
-        messageCountElement.textContent = messageCount;
-    }
+.connection-status.connecting i {
+    animation: spin 1s linear infinite;
 }
-
-// Update connection time
-function updateConnectionTime() {
-    if (connectionTimeElement && connectionStartTime) {
-        const now = new Date();
-        const diff = Math.floor((now - connectionStartTime) / 1000);
-        const minutes = Math.floor(diff / 60);
-        const seconds = diff % 60;
-        connectionTimeElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
-
-// Reconnect MQTT
-function reconnectMQTT() {
-    if (client) {
-        client.end();
-    }
-    setTimeout(() => {
-        connectToMQTT();
-    }, 1000);
-    addLogMessage("System", "Manual reconnection initiated");
+/* Card Styles */
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
-
-// Update topic prefix
-function updateTopicPrefix() {
-    const topicPrefixElement = document.getElementById('topicPrefix');
-    if (topicPrefixElement) {
-        const newPrefix = topicPrefixElement.value.trim();
-        if (newPrefix && newPrefix !== TOPIC_PREFIX) {
-            TOPIC_PREFIX = newPrefix;
-            addLogMessage("System", `Topic prefix updated to: ${TOPIC_PREFIX}`);
-            if (client && client.connected) {
-                reconnectMQTT();
-            }
-        }
-    }
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
-
-// Clear message logs
-function clearLogs() {
-    if (messageLog) {
-        messageLog.innerHTML = '';
-        messageCount = 0;
-        updateMessageCount();
-        addLogMessage("System", "Message log cleared");
+.card h2 {
+    color: var(--dark-color);
+    margin-bottom: 25px;
+    font-size: 1.6rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.card h2 i {
+    color: var(--primary-color);
+}
+/* Main Grid Layout */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr; /* Gauges, Status, Control */
+    gap: 20px;
+    margin-bottom: 20px;
+}
+/* Sensor Gauges Section */
+.sensor-gauges-card {
+    grid-column: span 1;
+    display: flex;
+    flex-direction: column;
+}
+.gauge-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.gauge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.gauge-item canvas {
+    max-width: 100%;
+    height: auto;
+}
+.gauge-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+.distance-display {
+    text-align: center;
+    margin-top: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(102, 126, 234, 0.05));
+    border-radius: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+.distance-display .sensor-label {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+.distance-display .sensor-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    font-family: 'Courier New', monospace;
+}
+.last-update-info {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+/* Status Information Section */
+.status-info-card {
+    grid-column: span 1;
+    display: flex;
+    flex-direction: column;
+}
+.status-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.status-item {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6));
+    border-radius: 12px;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.status-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.status-item .control-info {
+    margin-bottom: 15px;
+}
+.status-item .status-badge {
+    margin-top: 10px;
+}
+/* Control Lampu Section */
+.control-section-card {
+    grid-column: span 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center content vertically */
+}
+.control-item {
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6));
+    border-radius: 12px;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    transition: var(--transition);
+    margin-bottom: 0; /* Remove bottom margin if it's the only item */
+}
+.control-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.control-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.control-icon {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+}
+.control-label {
+    font-weight: 600;
+    color: var(--dark-color);
+    font-size: 1.2rem;
+}
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+}
+.status-badge.on {
+    background: linear-gradient(135deg, var(--success-color), #45a049);
+    color: white;
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+.status-badge.off {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: white;
+    box-shadow: 0 2px 10px rgba(107, 114, 128, 0.3);
+}
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+.btn:hover::before {
+    left: 100%;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+.btn:active {
+    transform: translateY(0);
+}
+.btn-on {
+    background: linear-gradient(135deg, var(--success-color), #45a049);
+    color: white;
+}
+.btn-off {
+    background: linear-gradient(135deg, var(--danger-color), #da190b);
+    color: white;
+}
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #5a6fd8);
+    color: white;
+}
+.btn-secondary {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: white;
+}
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+/* Servo Status */
+.servo-status {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05));
+    border-radius: 12px;
+    border-left: 5px solid var(--warning-color);
+}
+.servo-visual {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 152, 0, 0.2);
+    transition: var(--transition);
+}
+.servo-door {
+    font-size: 2.5rem;
+    color: var(--warning-color);
+    transition: var(--transition);
+}
+/* Perbaikan: Menghapus transform: rotate(15deg); */
+.servo-visual.open .servo-door {
+    color: var(--success-color);
+}
+.servo-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.servo-label {
+    font-size: 1.2rem;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+.servo-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+}
+.servo-value.open {
+    color: var(--success-color);
+}
+.servo-value.closed {
+    color: var(--danger-color);
+}
+.servo-desc {
+    font-size: 0.9rem;
+    color: #888;
+    font-style: italic;
+}
+/* Settings */
+.settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.setting-group label {
+    font-weight: 600;
+    color: var(--dark-color);
+    font-size: 1rem;
+}
+.setting-group input {
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.8);
+}
+.setting-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.setting-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 10px;
+}
+/* Message Log */
+.log-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+}
+.log-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 0.9rem;
+    color: #666;
+}
+.log-stats strong {
+    color: var(--primary-color);
+}
+.message-log {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: #f8f9fa;
+    padding: 15px;
+}
+.log-item {
+    display: flex;
+    gap: 15px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+.log-item:last-child {
+    border-bottom: none;
+}
+.timestamp {
+    color: #666;
+    font-weight: 600;
+    min-width: 80px;
+}
+.message {
+    flex: 1;
+    word-break: break-word;
+}
+.log-item.system .message {
+    color: var(--info-color);
+}
+.log-item.sent .message {
+    color: var(--warning-color);
+}
+.log-item.received .message {
+    color: var(--success-color);
+}
+.log-item.error .message {
+    color: var(--danger-color);
+}
+/* Footer */
+footer {
+    margin-top: 30px;
+    padding: 20px;
+    text-align: center;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.footer-content {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+.footer-content p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr 1fr; /* 2 columns for medium screens */
+    }
+    .sensor-gauges-card {
+        grid-column: span 2; /* Gauges take full width */
     }
 }
-
-// Toggle auto scroll
-function toggleAutoScroll() {
-    autoScroll = !autoScroll;
-    const button = document.getElementById('autoScrollBtn');
-    if (button) {
-        button.innerHTML = autoScroll ? 
-            '<i class="fas fa-arrow-down"></i> Auto Scroll' : 
-            '<i class="fas fa-pause"></i> Manual Scroll';
-        button.className = autoScroll ? 'btn btn-small' : 'btn btn-small btn-secondary';
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
     }
-    addLogMessage("System", `Auto scroll ${autoScroll ? 'enabled' : 'disabled'}`);
+    header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+        padding: 20px;
+    }
+    header h1 {
+        font-size: 1.8rem;
+    }
+    .main-grid {
+        grid-template-columns: 1fr; /* Single column for small screens */
+    }
+    .sensor-gauges-card,
+    .status-info-card,
+    .control-section-card {
+        grid-column: span 1;
+    }
+    .settings {
+        grid-template-columns: 1fr;
+    }
+    .setting-actions {
+        flex-direction: column;
+    }
+    .footer-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .servo-status {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+    .log-controls {
+        flex-direction: column;
+        gap: 15px;
+    }
 }
-
-// Auto-retry connection with backoff
-let reconnectAttempts = 0;
-setInterval(() => {
-    if (!client || !client.connected) {
-        console.log("Auto-retry connection...");
-        reconnectMQTT();
-        reconnectAttempts++;
-        setTimeout(() => {
-            reconnectMQTT();
-        }, Math.min(60000, 2000 * Math.pow(2, reconnectAttempts)));
-    } else {
-        reconnectAttempts = 0;
+@media (max-width: 480px) {
+    .card {
+        padding: 20px;
     }
-}, 15000);
-
-// Keyboard shortcuts
-document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-            case "1":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "ON");
-                break;
-            case "2":
-                event.preventDefault();
-                sendMQTTCommand("lampu", "OFF");
-                break;
-            case "3":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "ON");
-                break;
-            case "4":
-                event.preventDefault();
-                sendMQTTCommand("kipas", "OFF");
-                break;
-        }
+    .control-item {
+        padding: 20px;
     }
-});
-
-// Page visibility handling
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-        console.log("Page hidden - maintaining connection");
-    } else {
-        console.log("Page visible - checking connection");
-        if (!client || !client.connected) {
-            addLogMessage("System", "Page resumed - reconnecting...");
-            reconnectMQTT();
-        }
+    .control-buttons {
+        flex-direction: column;
     }
-});
-
-// Cleanup on page close
-window.addEventListener('beforeunload', function() {
-    if (client) {
-        client.end();
+    .distance-display .sensor-value {
+        font-size: 2rem;
     }
-});
+    .gauge-item canvas {
+        width: 150px;
+        height: 150px;
+    }
+}
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.card {
+    animation: fadeIn 0.6s ease-out;
+}
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
+.card:nth-child(5) { animation-delay: 0.5s; }
+/* Scrollbar Styling */
+.message-log::-webkit-scrollbar {
+    width: 8px;
+}
+.message-log::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.message-log::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+.message-log::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+}
