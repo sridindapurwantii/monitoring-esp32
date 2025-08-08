@@ -20,7 +20,7 @@ let lastServoCommandTime = 0;
 let currentBrokerIndex = 0;
 let reconnectAttempts = 0;
 const commandMinInterval = 2000; // 2s debounce for commands
-const maxReconnectAttempts = 5;
+const maxReconnectAttempts = 3; // Reduced to switch brokers faster
 
 // Previous sensor values for trend calculation
 let previousValues = {
@@ -40,6 +40,7 @@ const messageCountElement = document.getElementById("messageCount");
 const connectionTimeElement = document.getElementById("connectionTime");
 const clientIdElement = document.getElementById("clientId");
 const lastUpdateElement = document.getElementById('lastUpdate');
+const mqttBrokerElement = document.getElementById("mqttBroker"); // Added for dynamic broker update
 
 // Generate unique client ID
 const clientId = `webClient-${Math.random().toString(16).substr(2, 8)}`;
@@ -50,6 +51,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
     if (clientIdElement) {
         clientIdElement.value = clientId;
+    }
+        
+    if (mqttBrokerElement) {
+        mqttBrokerElement.value = MQTT_BROKERS[currentBrokerIndex].url; // Initialize broker display
     }
         
     connectToMQTT();
@@ -149,13 +154,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }).draw();
 });
 
-// Add tooltips to control buttons
+// Add tooltips to buttons
 function addButtonTooltips() {
     const buttons = [
         { id: "lampuOn", tooltip: "Turn Lampu ON (Ctrl+1)" },
         { id: "lampuOff", tooltip: "Turn Lampu OFF (Ctrl+2)" },
         { id: "kipasOn", tooltip: "Turn Kipas ON (Ctrl+3)" },
         { id: "kipasOff", tooltip: "Turn Kipas OFF (Ctrl+4)" }
+        // Servo buttons omitted per request, but can be added if needed
     ];
         
     buttons.forEach(btn => {
@@ -174,11 +180,14 @@ function connectToMQTT() {
         updateConnectionStatus("connecting");
         const currentBroker = MQTT_BROKERS[currentBrokerIndex];
         addLogMessage("System", `Connecting to ${currentBroker.name} at ${currentBroker.url}...`);
+        if (mqttBrokerElement) {
+            mqttBrokerElement.value = currentBroker.url; // Update broker display
+        }
                 
         client = mqtt.connect(currentBroker.url, {
             clientId: clientId,
             clean: true,
-            connectTimeout: 10000, // Increased timeout
+            connectTimeout: 15000, // Increased to 15s for better reliability
             reconnectPeriod: 0, // Disable auto-reconnect (handled manually)
             keepalive: 60,
         });
@@ -391,7 +400,7 @@ function sendMQTTCommand(device, command) {
         return;
     }
         
-    if (client && client.connected()) {
+    if (client && client.connected) { // Fixed: Use client.connected property
         const topic = device === 'lampu' ? LAMPU_TOPIC : device === 'kipas' ? KIPAS_TOPIC : SERVO_TOPIC;
         try {
             client.publish(topic, command, { qos: 1, retain: false }, (err) => {
@@ -428,7 +437,7 @@ function sendMQTTCommand(device, command) {
 
 // Enable/disable control buttons
 function enableControls(enabled) {
-    const buttons = ['lampuOn', 'lampuOff', 'kipasOn', 'kipasOff', 'servoOn', 'servoOff'];
+    const buttons = ['lampuOn', 'lampuOff', 'kipasOn', 'kipasOff']; // Servo buttons omitted
     buttons.forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.disabled = !enabled;
@@ -555,7 +564,7 @@ function toggleAutoScroll() {
 
 // Auto-retry connection with backoff
 setInterval(() => {
-    if (!client || !client.connected()) {
+    if (!client || !client.connected) { // Fixed: Use client.connected property
         console.log("Auto-retry connection...");
         reconnectMQTT();
     }
@@ -599,7 +608,7 @@ document.addEventListener("visibilitychange", () => {
         console.log("Page hidden - maintaining connection");
     } else {
         console.log("Page visible - checking connection");
-        if (!client || !client.connected()) {
+        if (!client || !client.connected) { // Fixed: Use client.connected property
             addLogMessage("System", "Page resumed - reconnecting...");
             reconnectMQTT();
         }
