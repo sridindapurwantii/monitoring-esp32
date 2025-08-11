@@ -2,7 +2,6 @@
   Perbaikan:
   - Menghapus 'transform: rotate(15deg);' dari .servo-visual.open .servo-door
     agar ikon pintu tidak miring saat terbuka.
-  - Menambahkan styling untuk kontrol kipas agar konsisten dengan lampu.
 */
 * {
     margin: 0;
@@ -217,12 +216,12 @@ header h1 i {
 .status-item .status-badge {
     margin-top: 10px;
 }
-/* Control Section */
+/* Control Lampu Section */
 .control-section-card {
     grid-column: span 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; /* Center content vertically */
 }
 .control-item {
     padding: 25px;
@@ -230,10 +229,7 @@ header h1 i {
     border-radius: 12px;
     border: 2px solid rgba(102, 126, 234, 0.2);
     transition: var(--transition);
-    margin-bottom: 20px; /* Space between control items */
-}
-.control-item:last-child {
-    margin-bottom: 0; /* Remove margin for last item */
+    margin-bottom: 0; /* Remove bottom margin if it's the only item */
 }
 .control-item:hover {
     border-color: var(--primary-color);
@@ -259,11 +255,6 @@ header h1 i {
     color: var(--dark-color);
     font-size: 1.2rem;
 }
-.control-buttons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-}
 .status-badge {
     padding: 8px 16px;
     border-radius: 20px;
@@ -273,12 +264,12 @@ header h1 i {
     letter-spacing: 0.5px;
     transition: var(--transition);
 }
-.status-badge.on, .status-badge.terbuka {
+.status-badge.on {
     background: linear-gradient(135deg, var(--success-color), #45a049);
     color: white;
     box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
 }
-.status-badge.off, .status-badge.tidak-terbuka {
+.status-badge.off {
     background: linear-gradient(135deg, #6b7280, #4b5563);
     color: white;
     box-shadow: 0 2px 10px rgba(107, 114, 128, 0.3);
@@ -349,6 +340,15 @@ header h1 i {
     box-shadow: none;
 }
 /* Servo Status */
+.servo-status {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05));
+    border-radius: 12px;
+    border-left: 5px solid var(--warning-color);
+}
 .servo-visual {
     width: 80px;
     height: 80px;
@@ -364,6 +364,7 @@ header h1 i {
     color: var(--warning-color);
     transition: var(--transition);
 }
+/* Perbaikan: Menghapus transform: rotate(15deg); */
 .servo-visual.open .servo-door {
     color: var(--success-color);
 }
@@ -384,10 +385,10 @@ header h1 i {
     color: var(--dark-color);
     margin-bottom: 5px;
 }
-.servo-value.open, .servo-value.terbuka {
+.servo-value.open {
     color: var(--success-color);
 }
-.servo-value.closed, .servo-value.tidak-terbuka {
+.servo-value.closed {
     color: var(--danger-color);
 }
 .servo-desc {
@@ -418,10 +419,6 @@ header h1 i {
     font-size: 1rem;
     transition: var(--transition);
     background: rgba(255, 255, 255, 0.8);
-}
-.setting-group input[readonly] {
-    background: rgba(200, 200, 200, 0.3);
-    cursor: default;
 }
 .setting-group input:focus {
     outline: none;
@@ -557,8 +554,10 @@ footer {
         flex-direction: column;
         gap: 10px;
     }
-    .servo-visual {
-        margin-bottom: 10px;
+    .servo-status {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
     }
     .log-controls {
         flex-direction: column;
@@ -574,7 +573,6 @@ footer {
     }
     .control-buttons {
         flex-direction: column;
-        gap: 10px;
     }
     .distance-display .sensor-value {
         font-size: 2rem;
