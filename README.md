@@ -250,51 +250,51 @@ const COMMAND_TIMEOUT = 5000;
 
 ```mermaid
 flowchart TD
-    A[🚀 ESP32 Boot]  B[📶 Connect WiFi]
-    B  C{WiFi Connected?}
-    C |No| D[⏳ Wait 500ms]  B
-    C |Yes| E[📡 Connect MQTT]
-    E  F{MQTT Connected?}
-    F |No| G[⏳ Wait 5s]  E
-    F |Yes| H[📝 Subscribe Topics]
-    H  I[🔄 Main Loop Start]
+    A[🚀 ESP32 Boot] --> B[📶 Connect WiFi]
+    B --> C{WiFi Connected?}
+    C -->|No| D[⏳ Wait 500ms] --> B
+    C -->|Yes| E[📡 Connect MQTT]
+    E --> F{MQTT Connected?}
+    F -->|No| G[⏳ Wait 5s] --> E
+    F -->|Yes| H[📝 Subscribe Topics]
+    H --> I[🔄 Main Loop Start]
     
-    I  J[📊 Read Sensors]
-    J  K[🌡️ DHT22 Read]
-    K  L[📏 HC-SR04 Read]
-    L  M[🤖 Auto Control Logic]
+    I --> J[📊 Read Sensors]
+    J --> K[🌡️ DHT22 Read]
+    K --> L[📏 HC-SR04 Read]
+    L --> M[🤖 Auto Control Logic]
     
-    M  N{Distance &lt; 20cm?}
-    N |Yes| O[🚪 Open Servo]
-    N |No| P[🚪 Close Servo]
+    M --> N{Distance < 20cm?}
+    N -->|Yes| O[🚪 Open Servo]
+    N -->|No| P[🚪 Close Servo]
     
-    O  Q{Temp > 37°C?}
-    P  Q
-    Q |Yes| R[🌀 Auto Fan ON]
-    Q |No| S{Temp &lt; 27°C?}
-    S |Yes| T[🌀 Auto Fan OFF]
-    S |No| U[📤 Publish Sensor Data]
-    R  U
-    T  U
+    O --> Q{Temp > 37°C?}
+    P --> Q
+    Q -->|Yes| R[🌀 Auto Fan ON]
+    Q -->|No| S{Temp < 27°C?}
+    S -->|Yes| T[🌀 Auto Fan OFF]
+    S -->|No| U[📤 Publish Sensor Data]
+    R --> U
+    T --> U
     
-    U  V[📤 Publish Status Data]
-    V  W[📨 Handle MQTT Messages]
-    W  X[⏳ Delay 100ms]
-    X  I
+    U --> V[📤 Publish Status Data]
+    V --> W[📨 Handle MQTT Messages]
+    W --> X[⏳ Delay 100ms]
+    X --> I
     
-    W  Y{Command Received?}
-    Y |Kipas ON| Z1[🌀 Turn Kipas ON]
-    Y |Kipas OFF| Z2[🌀 Turn Kipas OFF]
-    Y |Lampu ON| Z3[💡 Turn Lampu ON]
-    Y |Lampu OFF| Z4[💡 Turn Lampu OFF]
-    Y |Servo| Z5[🚪 Control Servo]
+    W --> Y{Command Received?}
+    Y -->|Kipas ON| Z1[🌀 Turn Kipas ON]
+    Y -->|Kipas OFF| Z2[🌀 Turn Kipas OFF]
+    Y -->|Lampu ON| Z3[💡 Turn Lampu ON]
+    Y -->|Lampu OFF| Z4[💡 Turn Lampu OFF]
+    Y -->|Servo| Z5[🚪 Control Servo]
     
-    Z1  AA[📤 Publish Status]
-    Z2  AA
-    Z3  AA
-    Z4  AA
-    Z5  AA
-    AA  X
+    Z1 --> AA[📤 Publish Status]
+    Z2 --> AA
+    Z3 --> AA
+    Z4 --> AA
+    Z5 --> AA
+    AA --> X
     
     style A fill:#e1f5fe
     style I fill:#e8f5e8
@@ -302,6 +302,196 @@ flowchart TD
     style M fill:#fce4ec
     style U fill:#f3e5f5
     style W fill:#e0f2f1
+```
+
+### 🔄 MQTT Communication Flow
+
+```mermaid
+sequenceDiagram
+    participant W as 🌐 Web Interface
+    participant B as 📡 MQTT Broker
+    participant E as 🤖 ESP32
+    
+    Note over W,E: System Initialization
+    W->>B: Connect (WebSocket)
+    E->>B: Connect (TCP)
+    
+    W->>B: Subscribe to suhu, kelembapan, jarak
+    W->>B: Subscribe to kipas, lampu, servo/status
+    E->>B: Subscribe to kipas, lampu, servo/status
+    
+    Note over W,E: Sensor Data Flow (Every 3s)
+    E->>B: Publish suhu
+    E->>B: Publish kelembapan
+    E->>B: Publish jarak
+    B->>W: Forward sensor data
+    W->>W: Update UI displays
+    
+    Note over W,E: Status Updates (Every 5s)
+    E->>B: Publish kipas status
+    E->>B: Publish lampu status
+    E->>B: Publish servo status
+    B->>W: Forward status data
+    W->>W: Update control UI
+    
+    Note over W,E: User Control Flow
+    W->>W: User clicks button
+    W->>B: Publish command (e.g., kipas → ON)
+    B->>E: Forward command
+    E->>E: Execute command
+    E->>B: Publish new status
+    B->>W: Forward status update
+    W->>W: Update UI feedback
+    
+    Note over W,E: Auto Control Flow
+    E->>E: Distance < 20cm detected
+    E->>E: Open servo automatically
+    E->>B: Publish servo status
+    B->>W: Forward status
+    W->>W: Update servo visual
+    
+    E->>E: Temperature > 37°C detected
+    E->>E: Turn fan ON
+    E->>B: Publish kipas status
+    B->>W: Forward status
+    W->>W: Update fan status
+    
+    Note over W,E: Error Handling
+    E->>B: Connection lost
+    E->>E: Auto reconnect
+    E->>B: Reconnect successful
+    E->>B: Re-subscribe topics
+    
+    W->>B: Connection lost
+    W->>W: Show "Connecting..." status
+    W->>B: Auto reconnect
+    W->>W: Show "Connected" status
+```
+
+### 🎯 Decision Tree - Auto Control Logic
+
+```mermaid
+flowchart TD
+    A[📊 Sensor Reading Complete] --> B{🌡️ Temperature Check}
+    
+    B -->|Temp > 37°C| C[🔥 High Temperature]
+    B -->|Temp ≤ 37°C| D{📏 Distance Check}
+    
+    C --> E{🌀 Fan Currently OFF?}
+    E -->|Yes| F[✅ Turn Fan ON]
+    E -->|No| G[➡️ Keep Fan ON]
+    
+    D -->|Distance < 20cm| H[📏 Close Distance]
+    D -->|Distance ≥ 20cm| I[📏 Normal Distance]
+    
+    H --> J{🚪 Servo Currently Closed?}
+    J -->|Yes| K[✅ Open Servo]
+    J -->|No| L[➡️ Keep Servo Open]
+    
+    I --> M{🚪 Servo Currently Open?}
+    M -->|Yes| N[❌ Close Servo]
+    M -->|No| O[➡️ Keep Servo Closed]
+    
+    G --> P{🌡️ Temp < 27°C?}
+    P -->|Yes| Q[❌ Turn Fan OFF]
+    P -->|No| R[➡️ No Change Needed]
+    
+    F --> S[📤 Publish Status Update]
+    K --> S
+    L --> S
+    N --> S
+    O --> S
+    Q --> S
+    R --> S
+    
+    S --> T[⏳ Wait Next Cycle]
+    T --> U[🔄 Return to Main Loop]
+    
+    style A fill:#e1f5fe
+    style B fill:#ffebee
+    style D fill:#e3f2fd
+    style S fill:#f3e5f5
+    style T fill:#e8f5e8
+```
+
+### 📱 User Interaction Flow
+
+```mermaid
+flowchart TD
+    A[👤 User Opens Dashboard] --> B[🔍 Check Connection Status]
+    B --> C{🌐 Connected?}
+    
+    C -->|No| D[⚠️ Show 'Connecting...']
+    D --> E[⏳ Wait for Connection]
+    E --> F{📡 MQTT Connected?}
+    F -->|No| G[🔄 Auto Retry] --> E
+    F -->|Yes| H[✅ Show 'Connected']
+    
+    C -->|Yes| H
+    H --> I[📊 Display Real-time Data]
+    
+    I --> J[👆 User Interaction Options]
+    
+    J --> K{🎯 Action Type?}
+    
+    K -->|View Data| L[👀 Monitor Sensors]
+    L --> M[📈 Watch Trend Indicators]
+    M --> N[📝 Read Message Log]
+    
+    K -->|Control Device| O[🎛️ Click Control Button]
+    O --> P{🔘 Button Type?}
+    
+    P -->|Kipas ON| Q[🌀 Send Kipas ON Command]
+    P -->|Kipas OFF| R[🌀 Send Kipas OFF Command]
+    P -->|Lampu ON| S[💡 Send Lampu ON Command]
+    P -->|Lampu OFF| T[💡 Send Lampu OFF Command]
+    P -->|Servo| U[🚪 Send Servo Command]
+    
+    Q --> V[📤 MQTT Publish]
+    R --> V
+    S --> V
+    T --> V
+    U --> V
+    
+    V --> W[⏳ Wait for Response]
+    W --> X{📨 Status Update Received?}
+    X -->|Yes| Y[✅ Update UI Success]
+    X -->|No| Z[⏳ Timeout After 5s]
+    Z --> AA[⚠️ Show Error Message]
+    
+    K -->|Settings| BB[⚙️ Modify Settings]
+    BB --> CC{🔧 Setting Type?}
+    CC -->|Topic Prefix| DD[📝 Update Topic Prefix]
+    CC -->|Reconnect| EE[🔄 Force Reconnect]
+    CC -->|Clear Logs| FF[🗑️ Clear Message Log]
+    
+    K -->|Keyboard Shortcut| GG[⌨️ Keyboard Input]
+    GG --> HH{🎹 Key Combination?}
+    HH -->|Ctrl+1| II[💡 Lampu ON]
+    HH -->|Ctrl+2| JJ[💡 Lampu OFF]
+    HH -->|Ctrl+3| KK[🌀 Kipas ON]
+    HH -->|Ctrl+4| LL[🌀 Kipas OFF]
+    
+    II --> V
+    JJ --> V
+    KK --> V
+    LL --> V
+    
+    Y --> MM[🔄 Continue Monitoring]
+    AA --> MM
+    DD --> NN[🔄 Reconnect with New Settings]
+    EE --> NN
+    FF --> MM
+    N --> MM
+    
+    NN --> E
+    MM --> I
+    
+    style A fill:#e1f5fe
+    style J fill:#e8f5e8
+    style K fill:#fff3e0
+    style V fill:#fce4ec
+    style MM fill:#f3e5f5
 ```
 
 ## 🔒 Security Considerations
