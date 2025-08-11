@@ -56,7 +56,7 @@
                         <div class="status-item">
                             <div class="servo-visual" id="servoVisual">
                                 <div class="servo-door" id="servoDoor">
-                                    <i class="fas fa-door-closed"></i>
+                                    <i class="fas fa-door-open"></i>
                                 </div>
                             </div>
                             <div class="servo-info">
@@ -67,9 +67,9 @@
                         </div>
                     </div>
                 </section>
-                <!-- Control Section -->
+                <!-- Control Lampu Section -->
                 <section class="card control-section-card">
-                    <h2><i class="fas fa-lightbulb"></i> Kontrol Perangkat</h2>
+                    <h2><i class="fas fa-lightbulb"></i> Kontrol Lampu</h2>
                     <div class="control-item">
                         <div class="control-header">
                             <div class="control-info">
@@ -87,43 +87,6 @@
                             </button>
                         </div>
                     </div>
-                    <div class="control-item">
-                        <div class="control-header">
-                            <div class="control-info">
-                                <i class="fas fa-fan control-icon"></i>
-                                <span class="control-label">Kipas</span>
-                            </div>
-                            <div class="status-badge" id="kipasStatus">OFF</div>
-                        </div>
-                        <div class="control-buttons">
-                            <button class="btn btn-on" onclick="sendMQTTCommand('kipas', 'ON')" id="kipasOn">
-                                <i class="fas fa-power-off"></i> ON
-                            </button>
-                            <button class="btn btn-off" onclick="sendMQTTCommand('kipas', 'OFF')" id="kipasOff">
-                                <i class="fas fa-power-off"></i> OFF
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Servo Control Buttons (Commented out per request, uncomment if needed) -->
-                    <!--
-                    <div class="control-item">
-                        <div class="control-header">
-                            <div class="control-info">
-                                <i class="fas fa-door-open control-icon"></i>
-                                <span class="control-label">Pintu Otomatis</span>
-                            </div>
-                            <div class="status-badge" id="servoStatus">TIDAK TERBUKA</div>
-                        </div>
-                        <div class="control-buttons">
-                            <button class="btn btn-on" onclick="sendMQTTCommand('servo/status', 'TERBUKA')" id="servoOn">
-                                <i class="fas fa-door-open"></i> TERBUKA
-                            </button>
-                            <button class="btn btn-off" onclick="sendMQTTCommand('servo/status', 'TIDAK TERBUKA')" id="servoOff">
-                                <i class="fas fa-door-closed"></i> TUTUP
-                            </button>
-                        </div>
-                    </div>
-                    -->
                 </section>
             </div>
             <!-- MQTT Settings Section -->
@@ -132,7 +95,7 @@
                 <div class="settings">
                     <div class="setting-group">
                         <label for="mqttBroker">MQTT Broker:</label>
-                        <input type="text" id="mqttBroker" value="broker.emqx.io:8084" readonly>
+                        <input type="text" id="mqttBroker" value="broker.emqx.io" readonly>
                     </div>
                     <div class="setting-group">
                         <label for="clientId">Client ID:</label>
@@ -140,7 +103,7 @@
                     </div>
                     <div class="setting-group">
                         <label for="topicPrefix">Topic Prefix:</label>
-                        <input type="text" id="topicPrefix" value="ESP32-IoT" readonly>
+                        <input type="text" id="topicPrefix" value="ESP32-IoT" onchange="updateTopicPrefix()">
                     </div>
                     <div class="setting-actions">
                         <button class="btn btn-primary" onclick="reconnectMQTT()">
