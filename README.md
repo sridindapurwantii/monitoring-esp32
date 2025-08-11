@@ -1,212 +1,232 @@
-<h1 align="center"> ESP32 MQTT Control & Monitoring Dashboard
+ESP32 MQTT Control & Monitoring Dashboard
 
-<p align="center">
-  <img src="https://img.shields.io/badge/ESP32-MQTT-blue?style=for-the-badge&logo=arduino" />
-  <img src="https://img.shields.io/badge/HTML5-Web%20UI-orange?style=for-the-badge&logo=html5" />
-  <img src="https://img.shields.io/badge/JavaScript-MQTT.js-green?style=for-the-badge&logo=javascript" />
-  <img src="https://img.shields.io/badge/MQTT-Real%20Time-purple?style=for-the-badge&logo=mqtt" />
-</p>
+  
+  
+  
+  
+  
 
-## 🎯 Overview
 
-Sistem monitoring dan kontrol ESP32 berbasis MQTT dengan antarmuka web modern yang dapat digunakan di GitHub Pages. Sistem ini menyediakan komunikasi real-time antara ESP32 dan web interface menggunakan protokol MQTT.
+🎯 Overview
+A real-time ESP32-based monitoring and control system using MQTT with a modern, glassmorphism-style web interface deployable on GitHub Pages. The system enables seamless communication between an ESP32 microcontroller and a web dashboard via MQTT for real-time sensor monitoring and device control.
+✨ Key Features
+🌐 Web Interface
 
-## ✨ Fitur Utama
+Real-time Monitoring: Automatic updates of sensor data via MQTT.
+Glassmorphism UI: Elegant, transparent design with smooth blur effects and animations.
+Responsive Design: Optimized for desktop, tablet, and mobile devices.
+MQTT Message Log: Real-time logging of MQTT messages with timestamps.
+Connection Status: Visual indicator with auto-reconnect functionality.
+Keyboard Shortcuts: Quick control using keyboard commands.
+Trend Indicators: Visual cues for sensor data trends (rising/falling).
+Settings Panel: Configurable MQTT topic prefix and broker settings.
+Auto Scroll: Message log automatically scrolls to the latest entry.
 
-### 🌐 Web Interface
-- **Real-time Monitoring** - Data sensor diperbarui secara otomatis via MQTT
-- **Modern UI** - Desain glassmorphism dengan animasi smooth
-- **Responsive Design** - Optimal di desktop, tablet, dan mobile
-- **MQTT Message Log** - Log real-time semua komunikasi MQTT
-- **Connection Status** - Indikator status koneksi dengan auto-reconnect
-- **Keyboard Shortcuts** - Kontrol cepat dengan shortcut keyboard
-- **Trend Indicators** - Indikator naik/turun untuk data sensor
+🔧 ESP32 Features
 
-### 🔧 ESP32 Features
-- **Multi-sensor Support** - DHT22 (suhu/kelembapan) + HC-SR04 (jarak)
-- **Dual Relay Control** - Kontrol lampu dan kipas
-- **Servo Automation** - Servo otomatis berdasarkan jarak
-- **MQTT Communication** - Pub/Sub pattern untuk komunikasi real-time
-- **Auto Control** - Kipas otomatis berdasarkan suhu/kelembapan
-- **WiFi Auto-reconnect** - Koneksi WiFi dan MQTT yang stabil
+Multi-sensor Support: DHT22 (temperature/humidity), HC-SR04 (distance).
+Dual Relay Control: Control of light and fan with status feedback.
+Servo Automation: Automatic door simulation based on distance.
+MQTT Communication: Pub/Sub pattern for reliable real-time interaction.
+Auto Control Logic: Fan activates based on temperature with hysteresis.
+WiFi Auto-reconnect: Stable WiFi and MQTT connections.
+Built-in LED Indicator: Visual feedback for WiFi connection status.
+Command Debouncing: Prevents command spamming for reliable operation.
 
-## 📋 Requirements
+📋 Requirements
+Hardware
 
-### Hardware
-- ESP32 Development Board
-- DHT22 Temperature & Humidity Sensor
-- HC-SR04 Ultrasonic Distance Sensor
-- 2x Relay Module (5V)
-- SG90 Servo Motor
-- LED indicators (optional)
-- Breadboard dan jumper wires
+ESP32 Development Board
+DHT22 Temperature & Humidity Sensor
+HC-SR04 Ultrasonic Distance Sensor
+2x Relay Module (5V)
+SG90 Servo Motor
+LED Indicator (Built-in on GPIO 2)
+Breadboard and jumper wires
+5V Power Supply (for relays)
 
-### Software
-- Arduino IDE dengan ESP32 board package
-- Libraries: `PubSubClient`, `DHT`, `ESP32Servo`, `ArduinoJson`
-- Modern web browser dengan WebSocket support
+Software
 
-## 🔌 Pin Configuration
+Arduino IDE with ESP32 board package
+Libraries: PubSubClient, DHT, ESP32Servo, ArduinoJson
+Modern web browser with WebSocket support
+GitHub account (for GitHub Pages deployment)
 
-```cpp
-#define DHTPIN 2          // DHT22 data pin
+🔌 Pin Configuration
+#define DHTPIN 17         // DHT22 data pin (GPIO 17)
 #define TRIG_PIN 4        // HC-SR04 trigger pin
 #define ECHO_PIN 16       // HC-SR04 echo pin
-#define RELAY_LAMPU 27    // Relay untuk lampu
-#define RELAY_KIPAS 26    // Relay untuk kipas
+#define RELAY_LAMPU 27    // Relay for light
+#define RELAY_KIPAS 26    // Relay for fan
 #define SERVO_PIN 15      // Servo control pin
-```
+#define LED_PIN 2         // Built-in LED (GPIO 2)
 
-## 🚀 Installation
-
-### 1. ESP32 Setup
-
-#### Install Required Libraries
-```bash
-# Di Arduino IDE, buka Tools > Manage Libraries
-# Install libraries berikut:
+🚀 Installation
+1. ESP32 Setup
+Install Required Libraries
+# In Arduino IDE, go to Tools > Manage Libraries
+# Install the following libraries:
 - PubSubClient by Nick O'Leary
 - DHT sensor library by Adafruit
 - ESP32Servo by Kevin Harrington
 - ArduinoJson by Benoit Blanchon
-```
 
-#### Upload Code
-1. Buka Arduino IDE
-2. Copy kode ESP32 dari file `esp32_mqtt_code.ino`
-3. Ganti `YOUR_WIFI_SSID` dan `YOUR_WIFI_PASSWORD`
-4. Select board: `ESP32 Dev Module`
-5. Upload ke ESP32
+Upload Code
 
-### 2. Web Interface Setup
-
-#### Option 1: GitHub Pages
-1. Fork repository ini
-2. Enable GitHub Pages di repository settings
-3. Akses via URL GitHub Pages
-
-#### Option 2: Local Server
-```bash
-# Menggunakan Python
-python -m http.server 8000
-
-# Menggunakan Node.js
-npx http-server
-```
-
-## 📡 MQTT Topics Structure
-
-### Sensor Data (ESP32 → Web)
-```
-ESP32-IoT/sensors/temperature    # Suhu dalam Celsius
-ESP32-IoT/sensors/humidity       # Kelembapan dalam %
-ESP32-IoT/sensors/distance       # Jarak dalam cm
-```
-
-### Device Status (ESP32 → Web)
-```
-ESP32-IoT/relays/kipas/status    # Status kipas: ON/OFF
-ESP32-IoT/relays/lampu/status    # Status lampu: ON/OFF
-ESP32-IoT/servo/status           # Status servo: TERBUKA/TIDAK TERBUKA
-```
-
-### Control Commands (Web → ESP32)
-```
-ESP32-IoT/relays/kipas/command   # Perintah kipas: ON/OFF
-ESP32-IoT/relays/lampu/command   # Perintah lampu: ON/OFF
-```
-
-## 🎮 Usage
-
-### Basic Operation
-1. **Power ESP32** - Hubungkan ke power supply
-2. **Check Serial Monitor** - Pastikan WiFi dan MQTT terhubung
-3. **Open Web Interface** - Buka dashboard di browser
-4. **Wait for Connection** - Status "Connected" akan muncul
-5. **Monitor & Control** - Data sensor update otomatis, gunakan tombol kontrol
-
-### Keyboard Shortcuts
-- `Ctrl + 1` - Lampu ON
-- `Ctrl + 2` - Lampu OFF  
-- `Ctrl + 3` - Kipas ON
-- `Ctrl + 4` - Kipas OFF
-
-### Automatic Features
-- **Servo Control**: Terbuka otomatis jika jarak < 20cm
-- **Fan Control**: ON otomatis jika suhu > 30°C atau kelembapan > 70%
-- **Hysteresis**: Kipas OFF jika suhu < 28°C dan kelembapan < 65%
-
-## ⚙️ Configuration
-
-### ESP32 Configuration
-```cpp
-// WiFi Settings
-const char* ssid = "YOUR_WIFI_SSID";
+Open Arduino IDE.
+Copy the ESP32 code from esp32_mqtt_code.ino.
+Update WiFi credentials:const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// MQTT Settings  
+
+Select board: ESP32 Dev Module.
+Choose the correct COM port.
+Upload the code to the ESP32.
+
+2. Web Interface Setup
+Option 1: GitHub Pages (Recommended)
+
+Fork this repository.
+Enable GitHub Pages in repository settings.
+Select source: Deploy from a branch.
+Choose branch: main and folder: / (root).
+Access via the GitHub Pages URL: https://username.github.io/repository-name.
+
+Option 2: Local Development
+# Using Python
+python -m http.server 8000
+
+# Using Node.js
+npx http-server
+
+# Using PHP
+php -S localhost:8000
+
+📡 MQTT Topics Structure
+Sensor Data (ESP32 → Web)
+ESP32-IoT/suhu          # Temperature in Celsius (float)
+ESP32-IoT/kelembapan    # Humidity in % (float)
+ESP32-IoT/jarak         # Distance in cm (integer)
+
+Device Status (ESP32 → Web)
+ESP32-IoT/kipas         # Fan status: ON/OFF
+ESP32-IoT/lampu         # Light status: ON/OFF
+ESP32-IoT/servo/status  # Servo status: TERBUKA/TIDAK TERBUKA
+
+Control Commands (Web → ESP32)
+ESP32-IoT/kipas         # Fan command: ON/OFF
+ESP32-IoT/lampu         # Light command: ON/OFF
+ESP32-IoT/servo/status  # Servo command: TERBUKA/TIDAK TERBUKA
+
+🎮 Usage
+Basic Operation
+
+Power ESP32: Connect to a power supply and verify wiring.
+Check Serial Monitor: Set baud rate to 115200; confirm WiFi and MQTT connections.
+Open Web Interface: Access the dashboard in a browser.
+Wait for Connection: A green "Connected" status will appear.
+Monitor & Control: Sensor data updates automatically; use control buttons for interaction.
+
+Keyboard Shortcuts
+
+Ctrl + 1: Light ON
+Ctrl + 2: Light OFF
+Ctrl + 3: Fan ON
+Ctrl + 4: Fan OFF
+
+Automatic Features
+
+Servo Control: Opens automatically if distance < 20cm (door simulation).
+Fan Control: Activates if temperature > 37°C.
+Hysteresis: Fan turns OFF if temperature < 27°C to prevent oscillation.
+LED Indicator: Built-in LED reflects WiFi connection status.
+
+⚙️ Configuration
+ESP32 Configuration
+// WiFi Settings
+const char* ssid = "Sadin";
+const char* password = "Dinda12345";
+
+// MQTT Settings
 const char* mqttServer = "broker.emqx.io";
 const int mqttPort = 1883;
 const char* topicPrefix = "ESP32-IoT";
-```
 
-### Web Interface Configuration
-```javascript
+// Timing Configuration
+const unsigned long sensorInterval = 2000;   // Read sensors every 2s
+const unsigned long publishInterval = 3000;  // Publish data every 3s
+const unsigned long reconnectInterval = 5000; // Retry every 5s
+
+Web Interface Configuration
 // MQTT Configuration
 const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
 let TOPIC_PREFIX = "ESP32-IoT";
-```
 
-## 🔧 Troubleshooting
+// UI Configuration
+const MAX_LOG_ENTRIES = 50;
+const RECONNECT_INTERVAL = 3000;
+const COMMAND_TIMEOUT = 5000;
 
-### Common Issues
+🔧 Troubleshooting
+Common Issues
+1. ESP32 Not Connecting to WiFi
+Solutions:
 
-#### 1. ESP32 Not Connecting to WiFi
-**Solutions:**
-- Periksa kredensial WiFi di kode
-- Pastikan jaringan WiFi 2.4GHz (bukan 5GHz)
-- Reset ESP32 dan coba lagi
-- Periksa jangkauan WiFi
+Verify WiFi credentials in the code.
+Ensure the network is 2.4GHz (not 5GHz).
+Reset the ESP32 and retry.
+Check WiFi signal strength.
+Monitor serial output for error messages.
 
-#### 2. MQTT Connection Failed
-**Solutions:**
-- Periksa koneksi internet
-- Coba broker MQTT lain
-- Disable VPN/proxy
-- Periksa firewall settings
+2. MQTT Connection Failed
+Solutions:
 
-#### 3. Sensor Not Reading
-**Solutions:**
-- Periksa koneksi pin sensor
-- Pastikan power supply cukup (5V untuk relay)
-- Test sensor secara individual
-- Periksa kode pin configuration
+Confirm internet connectivity.
+Test an alternative MQTT broker (e.g., test.mosquitto.org).
+Disable VPN or proxy.
+Check firewall settings.
+Ensure browser WebSocket support.
 
-#### 4. Web Interface Not Loading
-**Solutions:**
-- Enable JavaScript di browser
-- Clear browser cache
-- Coba browser lain
-- Periksa console untuk error
+3. Sensor Not Reading
+Solutions:
 
-## 📊 System Architecture
+Verify sensor pin connections (DHT22 on GPIO 17).
+Ensure adequate power supply (5V for relays).
+Test sensors individually.
+Confirm pin configuration in code.
+Replace faulty sensors.
 
-```
+4. Web Interface Not Loading
+Solutions:
+
+Enable JavaScript in the browser.
+Clear browser cache and cookies.
+Try a different browser (Chrome/Firefox recommended).
+Check browser console for errors.
+Ensure HTTPS for GitHub Pages.
+
+5. Relay Not Working
+Solutions:
+
+Verify relay module wiring.
+Confirm 5V power supply for relays.
+Test relays with a multimeter.
+Check pin configuration (GPIO 26, 27).
+Replace faulty relay modules.
+
+📊 System Architecture
 ┌─────────────────┐    WiFi     ┌──────────────┐    WebSocket    ┌─────────────────┐
 │     ESP32       │◄───────────►│ MQTT Broker  │◄───────────────►│  Web Interface  │
 │                 │             │ (EMQX)       │                 │   (Browser)     │
 │ - DHT22         │             │              │                 │ - Real-time UI  │
 │ - HC-SR04       │             │ - Pub/Sub    │                 │ - Controls      │
 │ - Relays        │             │ - QoS        │                 │ - Monitoring    │
-│ - Servo         │             │ - Retain     │                 │ - Logs          │
+│ - Servo         │             │ - WebSocket  │                 │ - Glassmorphism │
+│ - Auto Control  │             │ - Retain     │                 │ - Logs          │
 └─────────────────┘             └──────────────┘                 └─────────────────┘
-```
 
-## 📊 Flowchart Sistem
-
-### 🔄 ESP32 Main Loop Flowchart
-
-```mermaid
+📊 Flowchart System
+🔄 ESP32 Main Loop Flowchart
 flowchart TD
     A[🚀 ESP32 Boot] --> B[📶 Connect WiFi]
     B --> C{WiFi Connected?}
@@ -226,10 +246,10 @@ flowchart TD
     N -->|Yes| O[🚪 Open Servo]
     N -->|No| P[🚪 Close Servo]
     
-    O --> Q{Temp > 30°C OR Humidity > 70%?}
+    O --> Q{Temp > 37°C?}
     P --> Q
     Q -->|Yes| R[🌀 Auto Fan ON]
-    Q -->|No| S{Temp < 28°C AND Humidity < 65%?}
+    Q -->|No| S{Temp < 27°C?}
     S -->|Yes| T[🌀 Auto Fan OFF]
     S -->|No| U[📤 Publish Sensor Data]
     R --> U
@@ -245,11 +265,13 @@ flowchart TD
     Y -->|Kipas OFF| Z2[🌀 Turn Kipas OFF]
     Y -->|Lampu ON| Z3[💡 Turn Lampu ON]
     Y -->|Lampu OFF| Z4[💡 Turn Lampu OFF]
+    Y -->|Servo| Z5[🚪 Control Servo]
     
     Z1 --> AA[📤 Publish Status]
     Z2 --> AA
     Z3 --> AA
     Z4 --> AA
+    Z5 --> AA
     AA --> X
     
     style A fill:#e1f5fe
@@ -258,11 +280,8 @@ flowchart TD
     style M fill:#fce4ec
     style U fill:#f3e5f5
     style W fill:#e0f2f1
-```
 
-### 🌐 Web Interface Flowchart
-
-```mermaid
+🌐 Web Interface Flowchart
 flowchart TD
     A1[🌐 Load Web Page] --> B1[📚 Load Libraries]
     B1 --> C1{MQTT.js Loaded?}
@@ -271,7 +290,7 @@ flowchart TD
     C1 -->|Yes| F1[🔗 Connect MQTT Broker]
     
     F1 --> G1{MQTT Connected?}
-    G1 -->|No| H1[⏳ Wait 1s] --> I1[🔄 Retry Connection] --> F1
+    G1 -->|No| H1[⏳ Wait 3s] --> I1[🔄 Retry Connection] --> F1
     G1 -->|Yes| J1[📝 Subscribe All Topics]
     
     J1 --> K1[✅ Update UI Status: Connected]
@@ -303,30 +322,40 @@ flowchart TD
     Z1 --> M1
     
     L1 --> AA1[👆 Handle User Clicks]
-    AA1 --> BB1{Button Clicked?}
-    BB1 -->|Kipas ON| CC1[📤 Publish: kipas/command → ON]
-    BB1 -->|Kipas OFF| CC2[📤 Publish: kipas/command → OFF]
-    BB1 -->|Lampu ON| CC3[📤 Publish: lampu/command → ON]
-    BB1 -->|Lampu OFF| CC4[📤 Publish: lampu/command → OFF]
+    AA1 --> BB1{🎯 Action Type?}
     
-    CC1 --> DD1[🎨 Button Animation]
-    CC2 --> DD1
-    CC3 --> DD1
-    CC4 --> DD1
+    BB1 -->|Control Button| CC1{🔘 Button Type?}
+    CC1 -->|Kipas ON| DD1[📤 Publish: kipas → ON]
+    CC1 -->|Kipas OFF| DD2[📤 Publish: kipas → OFF]
+    CC1 -->|Lampu ON| DD3[📤 Publish: lampu → ON]
+    CC1 -->|Lampu OFF| DD4[📤 Publish: lampu → OFF]
+    CC1 -->|Servo| DD5[📤 Publish: servo/status]
     
-    DD1 --> EE1[📝 Log Sent Message]
-    EE1 --> Z1
+    BB1 -->|Settings| EE1[⚙️ Open Settings Panel]
+    EE1 --> FF1{🔧 Setting Type?}
+    FF1 -->|Topic Prefix| GG1[📝 Update Topic Prefix]
+    FF1 -->|Reconnect| HH1[🔄 Force Reconnect]
+    FF1 -->|Clear Logs| II1[🗑️ Clear Message Log]
+    
+    DD1 --> JJ1[🎨 Button Animation]
+    DD2 --> JJ1
+    DD3 --> JJ1
+    DD4 --> JJ1
+    DD5 --> JJ1
+    
+    JJ1 --> KK1[📝 Log Sent Message]
+    GG1 --> KK1
+    HH1 --> F1
+    II1 --> KK1
+    KK1 --> Z1
     
     style A1 fill:#e1f5fe
     style L1 fill:#e8f5e8
     style M1 fill:#fff3e0
     style AA1 fill:#fce4ec
     style V1 fill:#f3e5f5
-```
 
-### 🔄 MQTT Communication Flow
-
-```mermaid
+🔄 MQTT Communication Flow
 sequenceDiagram
     participant W as 🌐 Web Interface
     participant B as 📡 MQTT Broker
@@ -336,26 +365,27 @@ sequenceDiagram
     W->>B: Connect (WebSocket)
     E->>B: Connect (TCP)
     
-    W->>B: Subscribe to sensor topics
-    W->>B: Subscribe to status topics
-    E->>B: Subscribe to command topics
+    W->>B: Subscribe to suhu, kelembapan, jarak
+    W->>B: Subscribe to kipas, lampu, servo/status
+    E->>B: Subscribe to kipas, lampu, servo/status
     
     Note over W,E: Sensor Data Flow (Every 3s)
-    E->>B: Publish temperature
-    E->>B: Publish humidity  
-    E->>B: Publish distance
+    E->>B: Publish suhu
+    E->>B: Publish kelembapan
+    E->>B: Publish jarak
     B->>W: Forward sensor data
     W->>W: Update UI displays
     
     Note over W,E: Status Updates (Every 5s)
-    E->>B: Publish relay status
+    E->>B: Publish kipas status
+    E->>B: Publish lampu status
     E->>B: Publish servo status
     B->>W: Forward status data
     W->>W: Update control UI
     
     Note over W,E: User Control Flow
     W->>W: User clicks button
-    W->>B: Publish command
+    W->>B: Publish command (e.g., kipas → ON)
     B->>E: Forward command
     E->>E: Execute command
     E->>B: Publish new status
@@ -369,6 +399,12 @@ sequenceDiagram
     B->>W: Forward status
     W->>W: Update servo visual
     
+    E->>E: Temperature > 37°C detected
+    E->>E: Turn fan ON
+    E->>B: Publish kipas status
+    B->>W: Forward status
+    W->>W: Update fan status
+    
     Note over W,E: Error Handling
     E->>B: Connection lost
     E->>E: Auto reconnect
@@ -379,77 +415,51 @@ sequenceDiagram
     W->>W: Show "Connecting..." status
     W->>B: Auto reconnect
     W->>W: Show "Connected" status
-```
 
-### 🎯 Decision Tree - Auto Control Logic
-
-```mermaid
+🎯 Decision Tree - Auto Control Logic
 flowchart TD
     A[📊 Sensor Reading Complete] --> B{🌡️ Temperature Check}
     
-    B -->|Temp > 30°C| C[🔥 High Temperature]
-    B -->|Temp ≤ 30°C| D{💧 Humidity Check}
+    B -->|Temp > 37°C| C[🔥 High Temperature]
+    B -->|Temp ≤ 37°C| D{📏 Distance Check}
     
     C --> E{🌀 Fan Currently OFF?}
     E -->|Yes| F[✅ Turn Fan ON]
     E -->|No| G[➡️ Keep Fan ON]
     
-    D -->|Humidity > 70%| H[💧 High Humidity]
-    D -->|Humidity ≤ 70%| I{🌡️ Low Temp Check}
+    D -->|Distance < 20cm| H[📏 Close Distance]
+    D -->|Distance ≥ 20cm| I[📏 Normal Distance]
     
-    H --> J{🌀 Fan Currently OFF?}
-    J -->|Yes| K[✅ Turn Fan ON]
-    J -->|No| L[➡️ Keep Fan ON]
+    H --> J{🚪 Servo Currently Closed?}
+    J -->|Yes| K[✅ Open Servo]
+    J -->|No| L[➡️ Keep Servo Open]
     
-    I -->|Temp < 28°C| M{💧 Low Humidity Check}
-    I -->|Temp ≥ 28°C| N[🔄 No Change Needed]
+    I --> M{🚪 Servo Currently Open?}
+    M -->|Yes| N[❌ Close Servo]
+    M -->|No| O[➡️ Keep Servo Closed]
     
-    M -->|Humidity < 65%| O{🌀 Fan Currently ON?}
-    M -->|Humidity ≥ 65%| P[🔄 No Change Needed]
-    
-    O -->|Yes| Q[❌ Turn Fan OFF]
-    O -->|No| R[➡️ Keep Fan OFF]
+    G --> P{🌡️ Temp < 27°C?}
+    P -->|Yes| Q[❌ Turn Fan OFF]
+    P -->|No| R[➡️ No Change Needed]
     
     F --> S[📤 Publish Status Update]
-    G --> T[📏 Distance Check]
     K --> S
-    L --> T
-    N --> T
-    P --> T
+    L --> S
+    N --> S
+    O --> S
     Q --> S
-    R --> T
+    R --> S
     
-    S --> T
-    T --> U{📏 Distance < 20cm?}
-    
-    U -->|Yes| V{🚪 Servo Currently Closed?}
-    U -->|No| W{🚪 Servo Currently Open?}
-    
-    V -->|Yes| X[🚪 Open Servo]
-    V -->|No| Y[➡️ Keep Servo Open]
-    
-    W -->|Yes| Z[🚪 Close Servo]
-    W -->|No| AA[➡️ Keep Servo Closed]
-    
-    X --> BB[📤 Publish Servo Status]
-    Y --> CC[⏳ Wait Next Cycle]
-    Z --> BB
-    AA --> CC
-    
-    BB --> CC
-    CC --> DD[🔄 Return to Main Loop]
+    S --> T[⏳ Wait Next Cycle]
+    T --> U[🔄 Return to Main Loop]
     
     style A fill:#e1f5fe
     style B fill:#ffebee
     style D fill:#e3f2fd
-    style T fill:#fff3e0
-    style U fill:#f3e5f5
-    style CC fill:#e8f5e8
-```
+    style S fill:#f3e5f5
+    style T fill:#e8f5e8
 
-### 📱 User Interaction Flow
-
-```mermaid
+📱 User Interaction Flow
 flowchart TD
     A[👤 User Opens Dashboard] --> B[🔍 Check Connection Status]
     B --> C{🌐 Connected?}
@@ -478,104 +488,102 @@ flowchart TD
     P -->|Kipas OFF| R[🌀 Send Kipas OFF Command]
     P -->|Lampu ON| S[💡 Send Lampu ON Command]
     P -->|Lampu OFF| T[💡 Send Lampu OFF Command]
+    P -->|Servo| U[🚪 Send Servo Command]
     
-    Q --> U[📤 MQTT Publish]
-    R --> U
-    S --> U
-    T --> U
+    Q --> V[📤 MQTT Publish]
+    R --> V
+    S --> V
+    T --> V
+    U --> V
     
-    U --> V[⏳ Wait for Response]
-    V --> W{📨 Status Update Received?}
-    W -->|Yes| X[✅ Update UI Success]
-    W -->|No| Y[⏳ Timeout After 5s]
-    Y --> Z[⚠️ Show Error Message]
+    V --> W[⏳ Wait for Response]
+    W --> X{📨 Status Update Received?}
+    X -->|Yes| Y[✅ Update UI Success]
+    X -->|No| Z[⏳ Timeout After 5s]
+    Z --> AA[⚠️ Show Error Message]
     
-    K -->|Settings| AA[⚙️ Modify Settings]
-    AA --> BB{🔧 Setting Type?}
-    BB -->|Topic Prefix| CC[📝 Update Topic Prefix]
-    BB -->|Reconnect| DD[🔄 Force Reconnect]
-    BB -->|Clear Logs| EE[🗑️ Clear Message Log]
+    K -->|Settings| BB[⚙️ Modify Settings]
+    BB --> CC{🔧 Setting Type?}
+    CC -->|Topic Prefix| DD[📝 Update Topic Prefix]
+    CC -->|Reconnect| EE[🔄 Force Reconnect]
+    CC -->|Clear Logs| FF[🗑️ Clear Message Log]
     
-    K -->|Keyboard Shortcut| FF[⌨️ Keyboard Input]
-    FF --> GG{🎹 Key Combination?}
-    GG -->|Ctrl+1| HH[💡 Lampu ON]
-    GG -->|Ctrl+2| II[💡 Lampu OFF]
-    GG -->|Ctrl+3| JJ[🌀 Kipas ON]
-    GG -->|Ctrl+4| KK[🌀 Kipas OFF]
+    K -->|Keyboard Shortcut| GG[⌨️ Keyboard Input]
+    GG --> HH{🎹 Key Combination?}
+    HH -->|Ctrl+1| II[💡 Lampu ON]
+    HH -->|Ctrl+2| JJ[💡 Lampu OFF]
+    HH -->|Ctrl+3| KK[🌀 Kipas ON]
+    HH -->|Ctrl+4| LL[🌀 Kipas OFF]
     
-    HH --> U
-    II --> U
-    JJ --> U
-    KK --> U
+    II --> V
+    JJ --> V
+    KK --> V
+    LL --> V
     
-    X --> LL[🔄 Continue Monitoring]
-    Z --> LL
-    CC --> MM[🔄 Reconnect with New Settings]
-    DD --> MM
-    EE --> LL
-    N --> LL
+    Y --> MM[🔄 Continue Monitoring]
+    AA --> MM
+    DD --> NN[🔄 Reconnect with New Settings]
+    EE --> NN
+    FF --> MM
+    N --> MM
     
-    MM --> E
-    LL --> I
+    NN --> E
+    MM --> I
     
     style A fill:#e1f5fe
     style J fill:#e8f5e8
     style K fill:#fff3e0
-    style U fill:#fce4ec
-    style LL fill:#f3e5f5
-```
+    style V fill:#fce4ec
+    style MM fill:#f3e5f5
 
-## 🔒 Security Considerations
+🔒 Security Considerations
 
-- Gunakan MQTT broker dengan authentication untuk production
-- Implementasi SSL/TLS untuk koneksi aman
-- Batasi akses topic dengan ACL
-- Gunakan strong WiFi password
-- Regular update firmware ESP32
+Use an MQTT broker with authentication for production.
+Implement SSL/TLS for secure connections.
+Restrict topic access with Access Control Lists (ACLs).
+Use a strong WiFi password.
+Regularly update ESP32 firmware to patch vulnerabilities.
 
-## 🚀 Advanced Features
+🚀 Advanced Features
+Custom MQTT Broker
+To use a custom MQTT broker:
 
-### Custom MQTT Broker
-Untuk menggunakan broker MQTT sendiri:
+ESP32: Update mqttServer and mqttPort in the code.
+Web: Modify MQTT_BROKER URL in the JavaScript configuration.
+Authentication: Add username/password if required by the broker.
 
-1. **ESP32**: Ubah `mqttServer` dan `mqttPort`
-2. **Web**: Update `MQTT_BROKER` URL
-3. **Authentication**: Tambahkan username/password jika diperlukan
+Data Logging
+Enhance the system with:
 
-### Data Logging
-Tambahkan fitur logging dengan:
-- InfluxDB untuk time-series data
-- Grafana untuk visualisasi
-- Node-RED untuk automation
+InfluxDB: Store time-series sensor data.
+Grafana: Visualize historical data and trends.
+Node-RED: Automate workflows and integrate with other systems.
 
-### Mobile App
-Buat mobile app dengan:
-- React Native + MQTT.js
-- Flutter dengan mqtt_client
-- Ionic dengan Paho MQTT
+Mobile App
+Develop a mobile app using:
 
-## 📈 Performance Optimization
+React Native with MQTT.js for cross-platform support.
+Flutter with mqtt_client for native performance.
+Ionic with Paho MQTT for hybrid development.
 
-### ESP32 Optimization
-```cpp
+📈 Performance Optimization
+ESP32 Optimization
 // Reduce sensor reading frequency
-const unsigned long sensorInterval = 5000;  // 5 seconds
+const unsigned long sensorInterval = 2000;  // Read every 2 seconds
 
 // Optimize MQTT keepalive
 client.setKeepAlive(90);
 
 // Use QoS 0 for frequent data
 client.publish(topic, data, false);  // QoS 0, no retain
-```
 
-### Web Optimization
-```javascript
-// Limit log entries
+Web Optimization
+// Limit log entries to prevent memory issues
 while (messageLog.children.length > 50) {
     messageLog.removeChild(messageLog.firstChild);
 }
 
-// Debounce button clicks
+// Debounce button clicks to prevent spam
 const debounce = (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -587,56 +595,49 @@ const debounce = (func, wait) => {
         timeout = setTimeout(later, wait);
     };
 };
-```
 
-## 🤝 Contributing
+🤝 Contributing
+Contributions are welcome! To contribute:
 
-Kontribusi sangat diterima! Silakan:
+Fork the repository.
+Create a feature branch: git checkout -b feature/amazing-feature.
+Commit changes: git commit -m 'Add amazing feature'.
+Push to the branch: git push origin feature/amazing-feature.
+Open a Pull Request.
 
-1. Fork repository
-2. Buat feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push ke branch: `git push origin feature/amazing-feature`
-5. Buat Pull Request
+Development Guidelines
 
-### Development Guidelines
-- Follow existing code style
-- Test pada multiple browsers
-- Update dokumentasi
-- Include screenshots untuk UI changes
+Follow the existing code style and structure.
+Test changes across multiple browsers (Chrome, Firefox, Safari).
+Update documentation to reflect changes.
+Include screenshots for UI-related updates.
 
-## 📝 License
+📝 License
+This project is licensed under the MIT License. See the LICENSE file for details.
+🙏 Acknowledgments
 
-Project ini menggunakan MIT License. Lihat file `LICENSE` untuk detail.
+EMQX: For providing a free MQTT broker.
+MQTT.js: For a robust WebSocket MQTT client.
+Arduino Community: For open-source libraries and support.
+ESP32 Community: For comprehensive documentation and resources.
 
-## 🙏 Acknowledgments
+📞 Support
 
-- **EMQX** untuk free MQTT broker
-- **MQTT.js** untuk WebSocket MQTT client
-- **Arduino Community** untuk libraries
-- **ESP32 Community** untuk support dan dokumentasi
+Issues: GitHub Issues
+Discussions: GitHub Discussions
+Email: your-email@example.com
 
-## 📞 Support
+🔗 Useful Links
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
-- **Email**: your-email@example.com
+ESP32 Documentation
+MQTT.js Documentation
+EMQX Broker
+Arduino ESP32 Guide
 
-## 🔗 Useful Links
 
-- [ESP32 Documentation](https://docs.espressif.com/projects/esp-32/en/latest/)
-- [MQTT.js Documentation](https://github.com/mqttjs/MQTT.js)
-- [EMQX Broker](https://www.emqx.io/)
-- [Arduino ESP32 Guide](https://randomnerdtutorials.com/getting-started-with-esp32/)
 
----
 
-<div align="center">
-
-**⭐ Star this repository if you found it helpful!**
-
+⭐ Star this repository if you found it helpful!
 Made with ❤️ for the IoT community
+⬆ Back to Top
 
-<p><a href="#top">⬆ Back on Top</a></p>
-
-</div>
